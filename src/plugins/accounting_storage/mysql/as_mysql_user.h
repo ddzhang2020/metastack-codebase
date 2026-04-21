@@ -56,9 +56,30 @@ extern List as_mysql_modify_users(mysql_conn_t *mysql_conn, uint32_t uid,
 			       slurmdb_user_rec_t *user);
 
 extern List as_mysql_remove_users(mysql_conn_t *mysql_conn, uint32_t uid,
+<<<<<<< HEAD
 			       slurmdb_user_cond_t *user_cond);
 
 extern List as_mysql_remove_coord(mysql_conn_t *mysql_conn, uint32_t uid,
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				  bool is_deactivate,
+#endif
+			       slurmdb_user_cond_t *user_cond);
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_mysql_activate_users(mysql_conn_t *mysql_conn, uint32_t uid,
+			       slurmdb_user_cond_t *user_cond,
+			       slurmdb_user_rec_t *user);
+
+extern List as_mysql_deactivate_users(mysql_conn_t *mysql_conn, uint32_t uid,
+			       slurmdb_user_cond_t *user_cond);
+#endif
+
+extern List as_mysql_remove_coord(mysql_conn_t *mysql_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			       bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			       List acct_list, slurmdb_user_cond_t *user_cond);
 
 extern List as_mysql_get_users(mysql_conn_t *mysql_conn, uid_t uid,

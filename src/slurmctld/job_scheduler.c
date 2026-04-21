@@ -3255,6 +3255,25 @@ skip_start:
 					job_ptr->details->req_node_bitmap);
 #endif					
 		}
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_FAIL_BY_PART
+		if (fail_by_part && job_ptr->details && job_ptr->details->exc_node_bitmap) {
+			/* Job has excluded nodes */
+			fail_by_part = false;
+#ifdef __METASTACK_NEW_PART_PARA_SCHED
+			/* if para_sched, replace global node bitmap with resource area node bitmap */
+			if (para_sched) {
+				bit_and(para_sched_avail_node_bitmap[index], 
+					job_ptr->details->exc_node_bitmap);
+			}
+			else {
+				bit_and(avail_node_bitmap, job_ptr->details->exc_node_bitmap);
+			}
+#endif
+		}
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		if (fail_by_part && job_ptr->resv_name) {
 			/* do not schedule more jobs in this reservation, but
 			 * other jobs in this partition can be scheduled. */

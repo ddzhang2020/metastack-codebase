@@ -92,8 +92,48 @@ static int _set_cond(int *start, int argc, char **argv,
 		} else if (!end &&
 			   !xstrncasecmp(argv[i], "WithDeleted",
 					 MAX(command_len, 5))) {
+<<<<<<< HEAD
 			acct_cond->flags |= SLURMDB_ACCT_FLAG_DELETED;
 			assoc_cond->with_deleted = 1;
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'WithDeactivated', ignoring the latter.\n");
+				acct_cond->flags &= ~SLURMDB_ACCT_FLAG_DEACTIVATED;
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				acct_cond->flags &= ~SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED;
+			}
+#endif
+			acct_cond->flags |= SLURMDB_ACCT_FLAG_DELETED;
+			assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DELETED;
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		} else if (!end &&
+			   !xstrncasecmp(argv[i], "WithDeactivated",
+					 MAX(command_len, 5))) {
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'WithDeactivated', ignoring the latter.\n");
+				continue;
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeactivated' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				acct_cond->flags &= ~SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED;
+			}
+			acct_cond->flags |= SLURMDB_ACCT_FLAG_DEACTIVATED;
+			assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DEACTIVATED;
+		} else if (!end &&
+			   !xstrncasecmp(argv[i], "OnlyDeactivated",
+					 MAX(command_len, 5))) {
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				continue;
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeactivated' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				continue;
+			} 
+			acct_cond->flags |= SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED;
+			assoc_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		} else if (!end &&
 			   !xstrncasecmp(argv[i], "WithRawQOSLevel",
 					 MAX(command_len, 5))) {
@@ -262,6 +302,316 @@ static int _set_rec(int *start, int argc, char **argv,
 	return rec_set;
 }
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern int sacctmgr_activate_account(int argc, char **argv)
+{
+	int rc = SLURM_SUCCESS;
+	slurmdb_account_cond_t *acct_cond =
+		xmalloc(sizeof(slurmdb_account_cond_t));
+	slurmdb_account_rec_t *acct = xmalloc(sizeof(slurmdb_account_rec_t));
+	slurmdb_assoc_rec_t *assoc =
+		xmalloc(sizeof(slurmdb_assoc_rec_t));
+
+	int i=0;
+	int cond_set = 0, prev_set = 0, rec_set = 0, set = 0;
+	List ret_list = NULL;
+
+	slurmdb_init_assoc_rec(assoc, 0);
+
+	for (i=0; i<argc; i++) {
+		int command_len = strlen(argv[i]);
+		if (!xstrncasecmp(argv[i], "Where", MAX(command_len, 5))) {
+			i++;
+			prev_set = _set_cond(&i, argc, argv, acct_cond, NULL);
+			cond_set |= prev_set;
+		} else if (!xstrncasecmp(argv[i], "Set", MAX(command_len, 3))) {
+			i++;
+			prev_set = _set_rec(&i, argc, argv, NULL, NULL,
+					    acct, assoc);
+			rec_set |= prev_set;
+		} else {
+			prev_set = _set_cond(&i, argc, argv, acct_cond, NULL);
+			cond_set |= prev_set;
+		}
+	}
+
+	if (exit_code) {
+		slurmdb_destroy_account_cond(acct_cond);
+		slurmdb_destroy_account_rec(acct);
+		slurmdb_destroy_assoc_rec(assoc);
+		return SLURM_ERROR;
+	} else if (!cond_set) {
+		exit_code = 1;
+		fprintf(stderr,
+			" No conditions given to activate, not executing.\n");
+		slurmdb_destroy_account_cond(acct_cond);
+		slurmdb_destroy_account_rec(acct);
+		slurmdb_destroy_assoc_rec(assoc);
+		return SLURM_ERROR;
+	}
+
+	// Special case:  reset raw usage only
+	if (assoc->usage) {
+		rc = SLURM_ERROR;
+		if (assoc->usage->usage_raw == 0.0)
+			rc = sacctmgr_remove_assoc_usage(acct_cond->assoc_cond);
+		else
+			error("Raw usage can only be set to 0 (zero)");
+
+		slurmdb_destroy_account_cond(acct_cond);
+		slurmdb_destroy_account_rec(acct);
+		slurmdb_destroy_assoc_rec(assoc);
+		return rc;
+	}
+
+	notice_thread_init();
+	if (((rec_set & SA_SET_USER) && (cond_set == SA_SET_ASSOC)) || 
+		((rec_set & SA_SET_ASSOC) && (cond_set == SA_SET_USER) && !acct_cond->assoc_cond->acct_list)) { 
+		exit_code=1;
+		fprintf(stderr,
+			" There was a problem with your "
+			"'where' options.\n");
+		rc = SLURM_ERROR;
+		goto end_it;
+	}
+
+	acct_cond->flags |= SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED;
+	acct_cond->assoc_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
+	
+	// activate the account
+	ret_list = slurmdb_accounts_activate(  
+		db_conn, acct_cond, acct);
+	if (ret_list && list_count(ret_list)) {
+		char *object = NULL;
+		list_itr_t *itr = list_iterator_create(ret_list);
+		printf(" Activated accounts...\n");
+		while((object = list_next(itr))) {
+			printf("  %s\n", object);
+		}
+		list_iterator_destroy(itr);
+		set = 1;
+	} else if (ret_list) {
+		printf(" Nothing activated\n");
+		rc = SLURM_ERROR;
+	} else {
+		exit_code=1;
+		fprintf(stderr, " Error with request: %s\n",
+			slurm_strerror(errno));
+
+		rc = SLURM_ERROR;
+	}
+
+	FREE_NULL_LIST(ret_list);
+
+	// activate the account association
+	ret_list = slurmdb_associations_activate(
+		db_conn, acct_cond->assoc_cond, assoc);
+
+	if (ret_list && list_count(ret_list)) {
+		char *object = NULL;
+		list_itr_t *itr = list_iterator_create(ret_list);
+		printf(" Activated account associations...\n");
+		while ((object = list_next(itr))) {
+			printf("  %s\n", object);
+		}
+		list_iterator_destroy(itr);
+		set = 1;
+	} else if (ret_list) {
+		printf(" Nothing activated\n");
+		rc = SLURM_ERROR;
+	} else if ((errno == ESLURM_INVALID_PARENT_ACCOUNT) &&
+			assoc->parent_acct) {
+		slurmdb_account_rec_t *acct_rec =
+			sacctmgr_find_account(assoc->parent_acct);
+		if (!acct_rec) {
+			exit_code=1;
+			fprintf(stderr,
+				" Parent Account %s doesn't exist.\n",
+				assoc->parent_acct);
+			rc = SLURM_ERROR;
+			goto end_it;
+		}
+	} else {
+		exit_code=1;
+		fprintf(stderr, " Error with request: %s\n",
+			slurm_strerror(errno));
+
+		rc = SLURM_ERROR;
+	}
+
+	FREE_NULL_LIST(ret_list);
+
+end_it:
+
+	notice_thread_fini();
+	if (set) {
+		if (commit_check("Would you like to commit changes?"))
+			slurmdb_connection_commit(db_conn, 1);
+		else {
+			printf(" Changes Discarded\n");
+			slurmdb_connection_commit(db_conn, 0);
+		}
+	}
+	slurmdb_destroy_account_cond(acct_cond);
+	slurmdb_destroy_account_rec(acct);
+	slurmdb_destroy_assoc_rec(assoc);
+
+	return rc;
+}
+
+extern int sacctmgr_deactivate_account(int argc, char **argv)
+{
+	int rc = SLURM_SUCCESS;
+	slurmdb_account_cond_t *acct_cond =
+		xmalloc(sizeof(slurmdb_account_cond_t));
+	int i = 0;
+	List ret_list = NULL;
+	list_itr_t *itr = NULL;
+	int cond_set = 0, prev_set = 0;
+
+	for (i = 0; i < argc; i++) {
+		int command_len = strlen(argv[i]);
+		if (!xstrncasecmp(argv[i], "Where", MAX(command_len, 5))
+		    || !xstrncasecmp(argv[i], "Set", MAX(command_len, 3)))
+			i++;
+		prev_set = _set_cond(&i, argc, argv, acct_cond, NULL);
+		cond_set |= prev_set;
+	}
+
+	if (!cond_set) {
+		exit_code = 1;
+		fprintf(stderr,
+			" No conditions given to deactivate, not executing.\n");
+		slurmdb_destroy_account_cond(acct_cond);
+		return SLURM_ERROR;
+	}
+
+	if (exit_code) {
+		slurmdb_destroy_account_cond(acct_cond);
+		return SLURM_ERROR;
+	}
+
+	if (!acct_cond->assoc_cond) {
+		error("%s: Association condition is NULL", __func__);
+		slurmdb_destroy_account_cond(acct_cond);
+		return SLURM_ERROR;
+	}
+
+	/* check to see if person is trying to deactivate root account.  This is
+	 * bad, and should not be allowed outside of deactivating a cluster.
+	 */
+	if (acct_cond->assoc_cond
+	   && acct_cond->assoc_cond->acct_list
+	   && list_count(acct_cond->assoc_cond->acct_list)) {
+		char *tmp_char = NULL;
+		itr = list_iterator_create(acct_cond->assoc_cond->acct_list);
+		while ((tmp_char = list_next(itr))) {
+			if (!xstrcasecmp(tmp_char, "root"))
+				break;
+		}
+		list_iterator_destroy(itr);
+		if (tmp_char) {
+			exit_code=1;
+			fprintf(stderr, " You are not allowed to deactivate "
+				"the root account.\n"
+				" Use deactivate cluster instead.\n");
+			slurmdb_destroy_account_cond(acct_cond);
+			return SLURM_ERROR;
+		}
+	}
+
+	acct_cond->assoc_cond->only_defs = 0;
+	acct_cond->flags = 0;
+	acct_cond->assoc_cond->with_deleted = 0;
+
+	notice_thread_init();
+	if (cond_set == SA_SET_USER) {
+		ret_list = slurmdb_accounts_deactivate(
+			db_conn, acct_cond);
+	} else if (cond_set & SA_SET_ASSOC) {
+		ret_list = slurmdb_associations_deactivate(
+			db_conn, acct_cond->assoc_cond);
+	}
+	rc = errno;
+	notice_thread_fini();
+	slurmdb_destroy_account_cond(acct_cond);
+
+	if (ret_list && list_count(ret_list)) {
+		char *object = NULL;
+		list_itr_t *itr = NULL;
+		itr = list_iterator_create(ret_list);
+
+		/* Check to see if person is trying to deactivate a default
+		 * account of a user.  _isdefault only works with the
+		 * output from slurmdb_accounts_delete, and
+		 * with a previously got assoc_list.
+		 */
+		if (rc == ESLURM_NO_REMOVE_DEFAULT_ACCOUNT){
+			fprintf(stderr, " Error with request: %s\n",
+				slurm_strerror(rc));
+			while((object = list_next(itr))) {
+				fprintf(stderr,"  %s\n", object);
+			}
+			fprintf(stderr, " Please either deactivate the "
+				"accounts listed "
+				"above from list and resubmit,\n"
+				" or change these users' default accounts to "
+				"deactivate the account(s).\n"
+				" Changes Discarded\n");
+			slurmdb_connection_commit(db_conn, 0);
+			goto end_it;
+		}
+
+		/* If there were jobs running with an association to
+		   be deactivated, don't.
+		*/
+		if (rc == ESLURM_JOBS_RUNNING_ON_ASSOC) {
+			fprintf(stderr, " Error with request: %s\n",
+				slurm_strerror(rc));
+			while((object = list_next(itr))) {
+				fprintf(stderr,"  %s\n", object);
+			}
+			slurmdb_connection_commit(db_conn, 0);
+			goto end_it;
+		}
+
+		if (cond_set == SA_SET_USER) {
+			printf(" Deactivating accounts...\n");
+		} else if (cond_set & SA_SET_ASSOC) {
+			printf(" Deactivating account associations...\n");
+		}
+		while((object = list_next(itr))) {
+			printf("  %s\n", object);
+		}
+		list_iterator_destroy(itr);
+		if (commit_check("Would you like to commit changes?")) {
+			slurmdb_connection_commit(db_conn, 1);
+		} else {
+			printf(" Changes Discarded\n");
+			slurmdb_connection_commit(db_conn, 0);
+		}
+	} else if (ret_list) {
+		printf(" Nothing deactivated\n");
+		rc = SLURM_ERROR;
+	} else {
+		exit_code=1;
+		fprintf(stderr, " Error with request: %s\n",
+			slurm_strerror(errno));
+
+		rc = SLURM_ERROR;
+	}
+
+end_it:
+
+	FREE_NULL_LIST(ret_list);
+
+	return rc;
+}
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 extern int sacctmgr_add_account(int argc, char **argv)
 {
 	int rc = SLURM_SUCCESS;

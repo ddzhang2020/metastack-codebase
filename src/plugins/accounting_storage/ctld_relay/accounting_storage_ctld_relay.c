@@ -376,6 +376,12 @@ extern int acct_storage_p_modify_reservation(void *db_conn,
 }
 
 extern List acct_storage_p_remove_users(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					slurmdb_user_cond_t *user_cond)
 {
 	return NULL;
@@ -389,6 +395,12 @@ extern List acct_storage_p_remove_coord(void *db_conn, uint32_t uid,
 }
 
 extern List acct_storage_p_remove_accts(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					slurmdb_account_cond_t *acct_cond)
 {
 	return NULL;
@@ -402,6 +414,12 @@ extern List acct_storage_p_remove_clusters(void *db_conn, uint32_t uid,
 
 extern List acct_storage_p_remove_assocs(
 	void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	slurmdb_assoc_cond_t *assoc_cond)
 {
 	return NULL;

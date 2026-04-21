@@ -5004,6 +5004,27 @@ extern char *update_type2str(uint16_t update_type)
 		return "SLURMDB_ADD_TRES";
 	case SLURMDB_UPDATE_FEDS:
 		return "SLURMDB_UPDATE_FEDS";
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+		return "SLURMDB_ACTIVATE_USER";
+	case SLURMDB_ACTIVATE_ASSOC:
+		return "SLURMDB_ACTIVATE_ASSOC";
+	case SLURMDB_ACTIVATE_COORD:
+		return "SLURMDB_ACTIVATE_COORD";
+	case SLURMDB_ACTIVATE_WCKEY:
+		return "SLURMDB_ACTIVATE_WCKEY";
+	case SLURMDB_DEACTIVATE_USER:
+		return "SLURMDB_DEACTIVATE_USER";
+	case SLURMDB_DEACTIVATE_ASSOC:
+		return "SLURMDB_DEACTIVATE_ASSOC";
+	case SLURMDB_DEACTIVATE_COORD:
+		return "SLURMDB_DEACTIVATE_COORD";
+	case SLURMDB_DEACTIVATE_WCKEY:
+		return "SLURMDB_DEACTIVATE_WCKEY";
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	default:
 		return "unknown type";
 	}
@@ -5025,12 +5046,28 @@ extern int assoc_mgr_update_object(void *x, void *arg)
 	case SLURMDB_REMOVE_USER:
 	case SLURMDB_ADD_COORD:
 	case SLURMDB_REMOVE_COORD:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+	case SLURMDB_DEACTIVATE_USER:
+	case SLURMDB_ACTIVATE_COORD:
+	case SLURMDB_DEACTIVATE_COORD:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		rc = assoc_mgr_update_users(object, locked);
 		break;
 	case SLURMDB_ADD_ASSOC:
 	case SLURMDB_MODIFY_ASSOC:
 	case SLURMDB_REMOVE_ASSOC:
 	case SLURMDB_REMOVE_ASSOC_USAGE:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_ASSOC:
+	case SLURMDB_DEACTIVATE_ASSOC:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		rc = assoc_mgr_update_assocs(object, locked);
 		break;
 	case SLURMDB_ADD_QOS:
@@ -5042,6 +5079,13 @@ extern int assoc_mgr_update_object(void *x, void *arg)
 	case SLURMDB_ADD_WCKEY:
 	case SLURMDB_MODIFY_WCKEY:
 	case SLURMDB_REMOVE_WCKEY:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_WCKEY:
+	case SLURMDB_DEACTIVATE_WCKEY:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		rc = assoc_mgr_update_wckeys(object, locked);
 		break;
 	case SLURMDB_ADD_RES:
@@ -5453,6 +5497,12 @@ extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update, bool locked)
 			}
 			break;
 		case SLURMDB_ADD_ASSOC:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_ACTIVATE_ASSOC:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (rec) {
 				//rc = SLURM_ERROR;
 				break;
@@ -5503,6 +5553,12 @@ extern int assoc_mgr_update_assocs(slurmdb_update_object_t *update, bool locked)
 
 			break;
 		case SLURMDB_REMOVE_ASSOC:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_DEACTIVATE_ASSOC:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (!rec) {
 				//rc = SLURM_ERROR;
 				break;
@@ -5844,6 +5900,12 @@ extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update, bool locked)
 
 			break;
 		case SLURMDB_ADD_WCKEY:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_ACTIVATE_WCKEY:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (rec) {
 				//rc = SLURM_ERROR;
 				break;
@@ -5876,6 +5938,12 @@ extern int assoc_mgr_update_wckeys(slurmdb_update_object_t *update, bool locked)
 			object = NULL;
 			break;
 		case SLURMDB_REMOVE_WCKEY:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_DEACTIVATE_WCKEY:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (!rec) {
 				//rc = SLURM_ERROR;
 				break;
@@ -6007,6 +6075,12 @@ extern int assoc_mgr_update_users(slurmdb_update_object_t *update, bool locked)
 #endif
 			break;
 		case SLURMDB_ADD_USER:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_ACTIVATE_USER:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (rec) {
 #ifdef __METASTACK_ASSOC_HASH
 				update_user_hash(rec, rec_user_entry, rec_user_uid_entry);
@@ -6031,6 +6105,12 @@ extern int assoc_mgr_update_users(slurmdb_update_object_t *update, bool locked)
 			object = NULL;
 			break;
 		case SLURMDB_REMOVE_USER:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_DEACTIVATE_USER:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 #ifdef __METASTACK_ASSOC_HASH
 			if (rec_user_entry) {
 				remove_str_key_hash(&assoc_mgr_user_hash, name);
@@ -6056,6 +6136,13 @@ extern int assoc_mgr_update_users(slurmdb_update_object_t *update, bool locked)
 		case SLURMDB_ADD_COORD:
 			/* same as SLURMDB_REMOVE_COORD */
 		case SLURMDB_REMOVE_COORD:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case SLURMDB_ACTIVATE_COORD:
+		case SLURMDB_DEACTIVATE_COORD:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			if (!rec) {
 				//rc = SLURM_ERROR;
 #ifdef __METASTACK_ASSOC_HASH

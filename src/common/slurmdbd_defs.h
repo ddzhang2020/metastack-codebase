@@ -172,6 +172,24 @@ typedef enum {
 	DBD_FIX_BORROWAWAY_NODE,    /* Fix any borrowaway nodes */	
 #endif
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	DBD_ACTIVATE_ACCOUNTS = 4000,  /* Activate deactivated account */
+	DBD_ACTIVATE_USERS,     /* Activate deactivated user */
+	DBD_ACTIVATE_ASSOCS,     /* Activate user to the mix with user_rec and
+				 * add_assoc_cond */
+	DBD_ACTIVATE_ACCOUNT_COORDS, /* Activate new coordinatior to an account   */
+	DBD_ACTIVATE_WCKEYS,	/* Activate WCKEY information   	        */
+	DBD_DEACTIVATE_ACCOUNTS,    /* DEACTIVATE existing account              */
+	DBD_DEACTIVATE_USERS,       /* Deactivate existing user                 */
+	DBD_DEACTIVATE_ASSOCS,      /* Deactivate existing association          */
+	DBD_DEACTIVATE_ACCOUNT_COORDS,/* Deactivate existing coordinator from
+				   * an account */
+	DBD_DEACTIVATE_WCKEYS,	/* Deactivate WCKEY information   	        */
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	SLURM_PERSIST_INIT = 6500, /* So we don't use the
 				    * REQUEST_PERSIST_INIT also used here.
 				    */

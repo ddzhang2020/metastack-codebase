@@ -59,6 +59,21 @@ extern slurmdbd_msg_type_t str_2_slurmdbd_msg_type(char *msg_type)
 		return DBD_ADD_ACCOUNTS;
 	} else if (!xstrcasecmp(msg_type, "Add Accounts Cond")) {
 		return DBD_ADD_ACCOUNTS_COND;
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	} else if (!xstrcasecmp(msg_type, "Activate Accounts")) {
+		return DBD_ACTIVATE_ACCOUNTS;
+	} else if (!xstrcasecmp(msg_type, "Activate Users")) {
+		return DBD_ACTIVATE_USERS;
+	} else if (!xstrcasecmp(msg_type, "Deactivate Accounts")) {
+		return DBD_DEACTIVATE_ACCOUNTS;
+	} else if (!xstrcasecmp(msg_type, "Deactivate Users")) {
+		return DBD_DEACTIVATE_USERS;
+	} else if (!xstrcasecmp(msg_type, "Deactivate Assocs")) {
+		return DBD_DEACTIVATE_ASSOCS;
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	} else if (!xstrcasecmp(msg_type, "Add Account Coord")) {
 		return DBD_ADD_ACCOUNT_COORDS;
 	} else if (!xstrcasecmp(msg_type, "Add TRES")) {
@@ -249,6 +264,31 @@ extern slurmdbd_msg_type_t str_2_slurmdbd_msg_type(char *msg_type)
 	} else if (!xstrcasecmp(msg_type,
 				"Persistent TLS Connection Initialization")) {
 		return SLURM_PERSIST_INIT_TLS;
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	} else if (!xstrcasecmp(msg_type, "Acitivate Accounts")) {
+		return DBD_ACTIVATE_ACCOUNTS;
+	} else if (!xstrcasecmp(msg_type, "Acitivate Users")) {
+		return DBD_ACTIVATE_USERS;
+	} else if (!xstrcasecmp(msg_type, "Acitivate Associations")) {
+		return DBD_ACTIVATE_ASSOCS;
+	} else if (!xstrcasecmp(msg_type, "Acitivate Account Coords")) {
+		return DBD_ACTIVATE_ACCOUNT_COORDS;
+	} else if (!xstrcasecmp(msg_type, "Acitivate Wckeys")) {
+		return DBD_ACTIVATE_WCKEYS;
+	} else if (!xstrcasecmp(msg_type, "Deacitivate Accounts")) {
+		return DBD_DEACTIVATE_ACCOUNTS;
+	} else if (!xstrcasecmp(msg_type, "Deacitivate Users")) {
+		return DBD_DEACTIVATE_USERS;
+	} else if (!xstrcasecmp(msg_type, "Deacitivate Associations")) {
+		return DBD_DEACTIVATE_ASSOCS;
+	} else if (!xstrcasecmp(msg_type, "Deacitivate Account Coords")) {
+		return DBD_DEACTIVATE_ACCOUNT_COORDS;
+	} else if (!xstrcasecmp(msg_type, "Deacitivate Wckeys")) {
+		return DBD_DEACTIVATE_WCKEYS;
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	} else {
 		return NO_VAL;
 	}
@@ -863,6 +903,71 @@ extern char *slurmdbd_msg_type_2_str(slurmdbd_msg_type_t msg_type, int get_enum)
 		} else
 			return "Persistent TLS Connection Initialization";
 		break;
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+		if (get_enum) {
+			return "DBD_ACTIVATE_ACCOUNTS";
+		} else
+			return "Acitivate Accounts";
+		break;
+	case DBD_ACTIVATE_USERS:
+		if (get_enum) {
+			return "DBD_ACTIVATE_USERS";
+		} else
+			return "Acitivate Users";
+		break;	
+	case DBD_ACTIVATE_ASSOCS:
+		if (get_enum) {
+			return "DBD_ACTIVATE_ASSOCS";
+		} else
+			return "Acitivate Associations";
+		break;
+	case DBD_ACTIVATE_ACCOUNT_COORDS:
+		if (get_enum) {
+			return "DBD_ACTIVATE_ACCOUNT_COORDS";
+		} else
+			return "Acitivate Account Coords";
+		break;	
+	case DBD_ACTIVATE_WCKEYS:
+		if (get_enum) {
+			return "DBD_ACTIVATE_WCKEYS";
+		} else
+			return "Acitivate Wckeys";
+		break;
+	case DBD_DEACTIVATE_ACCOUNTS:
+		if (get_enum) {
+			return "DBD_DEACTIVATE_ACCOUNTS";
+		} else
+			return "Deacitivate Accounts";
+		break;	
+	case DBD_DEACTIVATE_USERS:
+		if (get_enum) {
+			return "DBD_DEACTIVATE_USERS";
+		} else
+			return "Deacitivate Users";
+		break;
+	case DBD_DEACTIVATE_ASSOCS:
+		if (get_enum) {
+			return "DBD_DEACTIVATE_ASSOCS";
+		} else
+			return "Deacitivate Associations";
+		break;	
+	case DBD_DEACTIVATE_ACCOUNT_COORDS:
+		if (get_enum) {
+			return "DBD_DEACTIVATE_ACCOUNT_COORDS";
+		} else
+			return "Deacitivate Account Coords";
+		break;
+	case DBD_DEACTIVATE_WCKEYS:
+		if (get_enum) {
+			return "DBD_DEACTIVATE_WCKEYS";
+		} else
+			return "Deacitivate Wckeys";
+		break;
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	default:
 		snprintf(unk_str, sizeof(unk_str), "MsgType=%d", msg_type);
 		return unk_str;
@@ -972,6 +1077,14 @@ extern void slurmdbd_free_msg(persist_msg_t *msg)
 	case DBD_REMOVE_RES:
 	case DBD_REMOVE_WCKEYS:
 	case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ACCOUNTS:
+	case DBD_DEACTIVATE_ASSOCS:
+	case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	case DBD_ARCHIVE_DUMP:
 #ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
 	case DBD_GET_BORROW:
@@ -1003,6 +1116,14 @@ extern void slurmdbd_free_msg(persist_msg_t *msg)
 		break;
 	case DBD_ADD_ACCOUNTS_COND:
 	case DBD_ADD_USERS_COND:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+	case DBD_ACTIVATE_USERS:
+	case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	case DBD_MODIFY_ACCOUNTS:
 	case DBD_MODIFY_ASSOCS:
 	case DBD_MODIFY_CLUSTERS:
@@ -1087,6 +1208,12 @@ extern void slurmdbd_free_cond_msg(dbd_cond_msg_t *msg,
 		switch (type) {
 		case DBD_GET_ACCOUNTS:
 		case DBD_REMOVE_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case DBD_DEACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			my_destroy = slurmdb_destroy_account_cond;
 			break;
 		case DBD_GET_TRES:
@@ -1095,6 +1222,12 @@ extern void slurmdbd_free_cond_msg(dbd_cond_msg_t *msg,
 		case DBD_GET_ASSOCS:
 		case DBD_GET_PROBS:
 		case DBD_REMOVE_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case DBD_DEACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			my_destroy = slurmdb_destroy_assoc_cond;
 			break;
 		case DBD_GET_CLUSTERS:
@@ -1125,6 +1258,12 @@ extern void slurmdbd_free_cond_msg(dbd_cond_msg_t *msg,
 			break;
 		case DBD_GET_USERS:
 		case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE	
+		case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			my_destroy = slurmdb_destroy_user_cond;
 			break;
 		case DBD_ARCHIVE_DUMP:
@@ -1263,10 +1402,22 @@ extern void slurmdbd_free_modify_msg(dbd_modify_msg_t *msg,
 			destroy_rec = slurmdb_destroy_user_rec;
 			break;
 		case DBD_MODIFY_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case DBD_ACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			destroy_cond = slurmdb_destroy_account_cond;
 			destroy_rec = slurmdb_destroy_account_rec;
 			break;
 		case DBD_MODIFY_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			destroy_cond = slurmdb_destroy_assoc_cond;
 			destroy_rec = slurmdb_destroy_assoc_rec;
 			break;
@@ -1291,6 +1442,12 @@ extern void slurmdbd_free_modify_msg(dbd_modify_msg_t *msg,
 			destroy_rec = slurmdb_destroy_res_rec;
 			break;
 		case DBD_MODIFY_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		case DBD_ACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			destroy_cond = slurmdb_destroy_user_cond;
 			destroy_rec = slurmdb_destroy_user_rec;
 			break;

@@ -7505,12 +7505,28 @@ extern void slurmdb_pack_update_object(slurmdb_update_object_t *object,
 	case SLURMDB_REMOVE_USER:
 	case SLURMDB_ADD_COORD:
 	case SLURMDB_REMOVE_COORD:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+	case SLURMDB_DEACTIVATE_USER:
+	case SLURMDB_ACTIVATE_COORD:
+	case SLURMDB_DEACTIVATE_COORD:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_user_rec;
 		break;
 	case SLURMDB_ADD_ASSOC:
 	case SLURMDB_MODIFY_ASSOC:
 	case SLURMDB_REMOVE_ASSOC:
 	case SLURMDB_REMOVE_ASSOC_USAGE:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_ASSOC:
+	case SLURMDB_DEACTIVATE_ASSOC:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_assoc_rec;
 		break;
 	case SLURMDB_ADD_QOS:
@@ -7524,6 +7540,13 @@ extern void slurmdb_pack_update_object(slurmdb_update_object_t *object,
 	case SLURMDB_ADD_WCKEY:
 	case SLURMDB_MODIFY_WCKEY:
 	case SLURMDB_REMOVE_WCKEY:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_WCKEY:
+	case SLURMDB_DEACTIVATE_WCKEY:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_wckey_rec;
 		break;
 	case SLURMDB_ADD_CLUSTER:
@@ -7588,6 +7611,15 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_REMOVE_USER:
 	case SLURMDB_ADD_COORD:
 	case SLURMDB_REMOVE_COORD:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+	case SLURMDB_DEACTIVATE_USER:
+	case SLURMDB_ACTIVATE_COORD:
+	case SLURMDB_DEACTIVATE_COORD:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_user_rec;
 		my_destroy = slurmdb_destroy_user_rec;
 		break;
@@ -7595,6 +7627,13 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_MODIFY_ASSOC:
 	case SLURMDB_REMOVE_ASSOC:
 	case SLURMDB_REMOVE_ASSOC_USAGE:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_ASSOC:
+	case SLURMDB_DEACTIVATE_ASSOC:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_assoc_rec;
 		my_destroy = slurmdb_destroy_assoc_rec;
 		break;
@@ -7611,6 +7650,13 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_ADD_WCKEY:
 	case SLURMDB_MODIFY_WCKEY:
 	case SLURMDB_REMOVE_WCKEY:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_WCKEY:
+	case SLURMDB_DEACTIVATE_WCKEY:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_wckey_rec;
 		my_destroy = slurmdb_destroy_wckey_rec;
 		break;

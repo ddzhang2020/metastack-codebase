@@ -315,6 +315,12 @@ extern int acct_storage_g_modify_reservation(void *db_conn,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_users(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					slurmdb_user_cond_t *user_cond);
 
 /*
@@ -333,6 +339,12 @@ extern List acct_storage_g_remove_coord(void *db_conn, uint32_t uid,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_accounts(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					   bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					   slurmdb_account_cond_t *acct_cond);
 
 /*
@@ -349,7 +361,48 @@ extern List acct_storage_g_remove_clusters(void *db_conn, uint32_t uid,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_assocs(
+<<<<<<< HEAD
 	void *db_conn, uint32_t uid, slurmdb_assoc_cond_t *assoc_cond);
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	void *db_conn, uint32_t uid, bool is_deactivate, slurmdb_assoc_cond_t *assoc_cond);
+#else
+	void *db_conn, uint32_t uid, slurmdb_assoc_cond_t *assoc_cond);
+#endif
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * activate existing users in the accounting system
+ * IN:  slurmdb_user_cond_t *user_cond
+ * IN:  slurmdb_user_rec_t *user
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List acct_storage_g_activate_users(void *db_conn, uint32_t uid,
+					  slurmdb_user_cond_t *user_cond,
+					  slurmdb_user_rec_t *user);
+
+/*
+ * activate existing accounts in the accounting system
+ * IN:  slurmdb_acct_cond_t *acct_cond
+ * IN:  slurmdb_account_rec_t *acct
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List acct_storage_g_activate_accounts(void *db_conn, uint32_t uid,
+					   slurmdb_account_cond_t *acct_cond,
+					   slurmdb_account_rec_t *acct);
+
+/*
+ * activate existing associations in the accounting system
+ * IN:  slurmdb_assoc_cond_t *assoc_cond
+ * IN:  slurmdb_assoc_rec_t *assoc
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List acct_storage_g_activate_assocs(
+	void *db_conn, uint32_t uid,
+	slurmdb_assoc_cond_t *assoc_cond,
+	slurmdb_assoc_rec_t *assoc);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 
 /*
  * remove federations from accounting system

@@ -165,6 +165,31 @@ extern int remove_common(mysql_conn_t *mysql_conn,
 			 bool *jobs_running,
 			 bool *default_account);
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern int activate_common(mysql_conn_t *mysql_conn,
+			 uint16_t type,
+			 time_t now,
+			 char *user_name,
+			 char *table,
+			 char *cond_char,
+			 char *vals,
+			 char *cluster_name);
+extern int deactivate_common(mysql_conn_t *mysql_conn,
+			 uint16_t type,
+			 time_t now,
+			 char *user_name,
+			 char *table,
+			 char *name_char,
+			 char *assoc_char,
+			 char *cluster_name,
+			 List ret_list,
+			 bool *jobs_running,
+			 bool *default_account);
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 extern void mod_tres_str(char **out, char *mod, char *cur,
 			 char *cur_par, char *name, char **vals,
 			 uint32_t id, bool assoc);

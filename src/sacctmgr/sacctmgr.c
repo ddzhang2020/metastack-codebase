@@ -86,6 +86,13 @@ bool user_case_norm = true;
 bool tree_display = 0;
 bool have_db_conn = false;
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+static void	_activate_it(int argc, char **argv);
+static void	_deactivate_it(int argc, char **argv);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 static void	_add_it(int argc, char **argv);
 static void	_archive_it(int argc, char **argv);
 static void	_clear_it(int argc, char **argv);
@@ -515,6 +522,15 @@ static int _process_command (int argc, char **argv)
 				 argv[0]);
 		}
 		exit_flag = 1;
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	} else if (xstrncasecmp(argv[0], "activate", MAX(command_len, 3)) == 0) {
+		_activate_it((argc - 1), &argv[1]);
+	} else if (xstrncasecmp(argv[0], "deactivate", MAX(command_len, 3)) == 0) {
+		_deactivate_it((argc - 1), &argv[1]);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	} else if ((xstrncasecmp(argv[0], "add", MAX(command_len, 3)) == 0) ||
 		   (xstrncasecmp(argv[0], "create",
 				 MAX(command_len, 3)) == 0)) {
@@ -620,6 +636,106 @@ static int _process_command (int argc, char **argv)
 	return 0;
 }
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * _activate_it - activate the entity per the supplied arguments 
+ * IN argc - count of arguments
+ * IN argv - list of arguments
+ */
+static void _activate_it(int argc, char **argv)
+{
+	int error_code = SLURM_SUCCESS;
+	int command_len = 0;
+
+	if (!have_db_conn) {
+		exit_code = 1;
+		return;
+	}
+
+	if (readonly_flag) {
+		exit_code = 1;
+		fprintf(stderr, "Can't run this command in readonly mode.\n");
+		return;
+	}
+
+	if (!argv[0])
+		goto helpme;
+
+	command_len = strlen(argv[0]);
+	/* reset the connection to get the most recent stuff */
+	slurmdb_connection_commit(db_conn, 0);
+
+	/* First identify the entity to activate */
+	if (xstrncasecmp(argv[0], "Accounts", MAX(command_len, 1)) == 0
+	    || !xstrncasecmp(argv[0], "Acct", MAX(command_len, 4))) {
+		error_code = sacctmgr_activate_account((argc - 1), &argv[1]);
+	} else if (xstrncasecmp(argv[0], "Users", MAX(command_len, 1)) == 0) {
+		error_code = sacctmgr_activate_user((argc - 1), &argv[1]);
+	} else {
+	helpme:
+		exit_code = 1;
+		fprintf(stderr, "No valid entity in activate command\n");
+		fprintf(stderr, "Input line must include ");
+		fprintf(stderr, "\"Account\", or \"User\"\n");
+	}
+
+	if (error_code != SLURM_SUCCESS) {
+		exit_code = 1;
+	}
+}
+
+
+/*
+ * _deactivate_it - deactivate the entity per the supplied arguments
+ * IN argc - count of arguments
+ * IN argv - list of arguments
+ */
+static void _deactivate_it(int argc, char **argv)
+{
+	int error_code = SLURM_SUCCESS;
+	int command_len = 0;
+
+	if (!have_db_conn) {
+		exit_code = 1;
+		return;
+	}
+
+	if (readonly_flag) {
+		exit_code = 1;
+		fprintf(stderr, "Can't run this command in readonly mode.\n");
+		return;
+	}
+
+	if (!argv[0])
+		goto helpme;
+
+	command_len = strlen(argv[0]);
+	/* reset the connection to get the most recent stuff */
+	slurmdb_connection_commit(db_conn, 0);
+
+	/* First identify the entity to deactivate */
+	if (xstrncasecmp(argv[0], "Accounts", MAX(command_len, 1)) == 0
+	    || !xstrncasecmp(argv[0], "Acct", MAX(command_len, 4))) {
+		error_code = sacctmgr_deactivate_account((argc - 1), &argv[1]);
+	} else if (xstrncasecmp(argv[0], "Users", MAX(command_len, 1)) == 0) {
+		error_code = sacctmgr_deactivate_user((argc - 1), &argv[1]);
+	} else {
+	helpme:
+		exit_code = 1;
+		fprintf(stderr, "No valid entity in deactivate command\n");
+		fprintf(stderr, "Input line must include ");
+		fprintf(stderr, "\"Account\", or \"User\"\n");
+	}
+
+	if (error_code != SLURM_SUCCESS) {
+		exit_code = 1;
+	}
+}
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 /*
  * _add_it - add the entity per the supplied arguments
  * IN argc - count of arguments

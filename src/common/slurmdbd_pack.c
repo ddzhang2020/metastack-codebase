@@ -227,6 +227,12 @@ static void _pack_cond_msg(dbd_cond_msg_t *msg, uint16_t rpc_version,
 	switch (type) {
 	case DBD_GET_ACCOUNTS:
 	case DBD_REMOVE_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_account_cond;
 		break;
 	case DBD_GET_TRES:
@@ -235,6 +241,12 @@ static void _pack_cond_msg(dbd_cond_msg_t *msg, uint16_t rpc_version,
 	case DBD_GET_ASSOCS:
 	case DBD_GET_PROBS:
 	case DBD_REMOVE_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_assoc_cond;
 		break;
 	case DBD_GET_CLUSTERS:
@@ -262,6 +274,12 @@ static void _pack_cond_msg(dbd_cond_msg_t *msg, uint16_t rpc_version,
 		break;
 	case DBD_GET_USERS:
 	case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_pack_user_cond;
 		break;
 	case DBD_GET_TXN:
@@ -301,6 +319,12 @@ static int _unpack_cond_msg(dbd_cond_msg_t **msg, uint16_t rpc_version,
 	switch (type) {
 	case DBD_GET_ACCOUNTS:
 	case DBD_REMOVE_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_account_cond;
 		break;
 	case DBD_GET_TRES:
@@ -309,6 +333,12 @@ static int _unpack_cond_msg(dbd_cond_msg_t **msg, uint16_t rpc_version,
 	case DBD_GET_ASSOCS:
 	case DBD_GET_PROBS:
 	case DBD_REMOVE_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_assoc_cond;
 		break;
 	case DBD_GET_CLUSTERS:
@@ -336,6 +366,12 @@ static int _unpack_cond_msg(dbd_cond_msg_t **msg, uint16_t rpc_version,
 		break;
 	case DBD_GET_USERS:
 	case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_function = slurmdb_unpack_user_cond;
 		break;
 	case DBD_GET_TXN:
@@ -947,10 +983,22 @@ static void _pack_modify_msg(dbd_modify_msg_t *msg, uint16_t rpc_version,
 
 	switch (type) {
 	case DBD_MODIFY_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_pack_account_cond;
 		my_rec = slurmdb_pack_account_rec;
 		break;
 	case DBD_MODIFY_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_pack_assoc_cond;
 		my_rec = slurmdb_pack_assoc_rec;
 		break;
@@ -975,6 +1023,12 @@ static void _pack_modify_msg(dbd_modify_msg_t *msg, uint16_t rpc_version,
 		my_rec = slurmdb_pack_res_rec;
 		break;
 	case DBD_MODIFY_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_pack_user_cond;
 		my_rec = slurmdb_pack_user_rec;
 		break;
@@ -1006,10 +1060,22 @@ static int _unpack_modify_msg(dbd_modify_msg_t **msg, uint16_t rpc_version,
 
 	switch (type) {
 	case DBD_MODIFY_ACCOUNTS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_unpack_account_cond;
 		my_rec = slurmdb_unpack_account_rec;
 		break;
 	case DBD_MODIFY_ASSOCS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_unpack_assoc_cond;
 		my_rec = slurmdb_unpack_assoc_rec;
 		break;
@@ -1034,6 +1100,12 @@ static int _unpack_modify_msg(dbd_modify_msg_t **msg, uint16_t rpc_version,
 		my_rec = slurmdb_unpack_res_rec;
 		break;
 	case DBD_MODIFY_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		my_cond = slurmdb_unpack_user_cond;
 		my_rec = slurmdb_unpack_user_rec;
 		break;
@@ -1870,6 +1942,14 @@ extern buf_t *pack_slurmdbd_msg(persist_msg_t *req, uint16_t rpc_version)
 	case DBD_REMOVE_RES:
 	case DBD_REMOVE_WCKEYS:
 	case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ACCOUNTS:
+	case DBD_DEACTIVATE_ASSOCS:
+	case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	case DBD_ARCHIVE_DUMP:
 #ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
 	case DBD_GET_BORROW:
@@ -1921,6 +2001,14 @@ extern buf_t *pack_slurmdbd_msg(persist_msg_t *req, uint16_t rpc_version)
 	case DBD_MODIFY_USERS:
 	case DBD_ADD_ACCOUNTS_COND:
 	case DBD_ADD_USERS_COND:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+	case DBD_ACTIVATE_USERS:
+	case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		_pack_modify_msg(
 			(dbd_modify_msg_t *)req->data, rpc_version,
 			req->msg_type, buffer);
@@ -2097,6 +2185,14 @@ extern int unpack_slurmdbd_msg(persist_msg_t *resp, uint16_t rpc_version,
 	case DBD_REMOVE_RES:
 	case DBD_REMOVE_WCKEYS:
 	case DBD_REMOVE_USERS:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_ACCOUNTS:
+	case DBD_DEACTIVATE_ASSOCS:
+	case DBD_DEACTIVATE_USERS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	case DBD_ARCHIVE_DUMP:
 		rc = _unpack_cond_msg(
 			(dbd_cond_msg_t **)&resp->data, rpc_version,
@@ -2148,6 +2244,14 @@ extern int unpack_slurmdbd_msg(persist_msg_t *resp, uint16_t rpc_version,
 	case DBD_MODIFY_USERS:
 	case DBD_ADD_ACCOUNTS_COND:
 	case DBD_ADD_USERS_COND:
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+	case DBD_ACTIVATE_USERS:
+	case DBD_ACTIVATE_ASSOCS:
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		rc = _unpack_modify_msg(
 			(dbd_modify_msg_t **)&resp->data,
 			rpc_version,

@@ -125,16 +125,52 @@ typedef struct slurm_acct_storage_ops {
 	int  (*modify_reservation) (void *db_conn,
 				    slurmdb_reservation_rec_t *resv);
 	List (*remove_users)       (void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				    bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 				    slurmdb_user_cond_t *user_cond);
 	List (*remove_coord)       (void *db_conn, uint32_t uid,
 				    List acct_list,
 				    slurmdb_user_cond_t *user_cond);
+<<<<<<< HEAD
 	List (*remove_accts)       (void *db_conn, uint32_t uid,
 				    slurmdb_account_cond_t *acct_cond);
 	List (*remove_clusters)    (void *db_conn, uint32_t uid,
 				    slurmdb_cluster_cond_t *cluster_cond);
 	List (*remove_assocs)      (void *db_conn, uint32_t uid,
 				    slurmdb_assoc_cond_t *assoc_cond);
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	List (*remove_accts)       (void *db_conn, uint32_t uid,
+				    bool is_deactivate, slurmdb_account_cond_t *acct_cond);
+#else
+	List (*remove_accts)       (void *db_conn, uint32_t uid,
+				    slurmdb_account_cond_t *acct_cond);
+#endif
+	List (*remove_clusters)    (void *db_conn, uint32_t uid,
+				    slurmdb_cluster_cond_t *cluster_cond);
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	List (*remove_assocs)      (void *db_conn, uint32_t uid,
+				    bool is_deactivate, slurmdb_assoc_cond_t *assoc_cond);
+#else
+	List (*remove_assocs)      (void *db_conn, uint32_t uid,
+				    slurmdb_assoc_cond_t *assoc_cond);
+#endif
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	List (*activate_users)       (void *db_conn, uint32_t uid,
+				    slurmdb_user_cond_t *user_cond,
+				    slurmdb_user_rec_t *user);
+	List (*activate_accts)       (void *db_conn, uint32_t uid,
+				    slurmdb_account_cond_t *acct_cond,
+				    slurmdb_account_rec_t *acct);
+	List (*activate_assocs)      (void *db_conn, uint32_t uid,
+				    slurmdb_assoc_cond_t *assoc_cond,
+				    slurmdb_assoc_rec_t *assoc);			
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	List (*remove_federations) (void *db_conn, uint32_t uid,
 				    slurmdb_federation_cond_t *fed_cond);
 	List (*remove_qos)         (void *db_conn, uint32_t uid,
@@ -270,6 +306,14 @@ static const char *syms[] = {
 	"acct_storage_p_remove_accts",
 	"acct_storage_p_remove_clusters",
 	"acct_storage_p_remove_assocs",
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	"acct_storage_p_activate_users",	
+	"acct_storage_p_activate_accts",
+	"acct_storage_p_activate_assocs",
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	"acct_storage_p_remove_federations",
 	"acct_storage_p_remove_qos",
 	"acct_storage_p_remove_res",
@@ -716,6 +760,12 @@ extern int acct_storage_g_modify_reservation(void *db_conn,
 }
 
 extern List acct_storage_g_remove_users(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					slurmdb_user_cond_t *user_cond)
 {
 	xassert(plugin_inited != PLUGIN_NOT_INITED);
@@ -723,7 +773,15 @@ extern List acct_storage_g_remove_users(void *db_conn, uint32_t uid,
 	if (plugin_inited == PLUGIN_NOOP)
 		return NULL;
 
+<<<<<<< HEAD
 	return (*(ops.remove_users))(db_conn, uid, user_cond);
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return (*(ops.remove_users))(db_conn, uid, is_deactivate, user_cond);
+#else
+	return (*(ops.remove_users))(db_conn, uid, user_cond);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 }
 
 extern List acct_storage_g_remove_coord(void *db_conn, uint32_t uid,
@@ -739,6 +797,12 @@ extern List acct_storage_g_remove_coord(void *db_conn, uint32_t uid,
 }
 
 extern List acct_storage_g_remove_accounts(void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					   bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 					   slurmdb_account_cond_t *acct_cond)
 {
 	xassert(plugin_inited != PLUGIN_NOT_INITED);
@@ -746,7 +810,15 @@ extern List acct_storage_g_remove_accounts(void *db_conn, uint32_t uid,
 	if (plugin_inited == PLUGIN_NOOP)
 		return NULL;
 
+<<<<<<< HEAD
 	return (*(ops.remove_accts))(db_conn, uid, acct_cond);
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return (*(ops.remove_accts))(db_conn, uid, is_deactivate, acct_cond);
+#else
+	return (*(ops.remove_accts))(db_conn, uid, acct_cond);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 }
 
 extern List acct_storage_g_remove_clusters(void *db_conn, uint32_t uid,
@@ -762,6 +834,12 @@ extern List acct_storage_g_remove_clusters(void *db_conn, uint32_t uid,
 
 extern List acct_storage_g_remove_assocs(
 	void *db_conn, uint32_t uid,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	bool is_deactivate,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	slurmdb_assoc_cond_t *assoc_cond)
 {
 	xassert(plugin_inited != PLUGIN_NOT_INITED);
@@ -769,9 +847,58 @@ extern List acct_storage_g_remove_assocs(
 	if (plugin_inited == PLUGIN_NOOP)
 		return NULL;
 
+<<<<<<< HEAD
 	return (*(ops.remove_assocs))(db_conn, uid, assoc_cond);
 }
 
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return (*(ops.remove_assocs))(db_conn, uid, is_deactivate, assoc_cond);
+#else
+	return (*(ops.remove_assocs))(db_conn, uid, assoc_cond);
+#endif
+}
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List acct_storage_g_activate_users(void *db_conn, uint32_t uid,
+					 slurmdb_user_cond_t *user_cond,
+					 slurmdb_user_rec_t *user)
+{
+	xassert(plugin_inited != PLUGIN_NOT_INITED);
+
+	if (plugin_inited == PLUGIN_NOOP)
+		return NULL;
+
+	return (*(ops.activate_users))(db_conn, uid, user_cond, user);
+}
+
+extern List acct_storage_g_activate_accounts(void *db_conn, uint32_t uid,
+					   slurmdb_account_cond_t *acct_cond,
+					   slurmdb_account_rec_t *acct)
+{
+	xassert(plugin_inited != PLUGIN_NOT_INITED);
+
+	if (plugin_inited == PLUGIN_NOOP)
+		return NULL;
+
+	return (*(ops.activate_accts))(db_conn, uid, acct_cond, acct);
+}
+
+extern List acct_storage_g_activate_assocs(
+	void *db_conn, uint32_t uid,
+	slurmdb_assoc_cond_t *assoc_cond,
+	slurmdb_assoc_rec_t *assoc)
+{
+	xassert(plugin_inited != PLUGIN_NOT_INITED);
+
+	if (plugin_inited == PLUGIN_NOOP)
+		return NULL;
+
+	return (*(ops.activate_assocs))(db_conn, uid, assoc_cond, assoc);
+}
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 extern List acct_storage_g_remove_federations(
 					void *db_conn, uint32_t uid,
 					slurmdb_federation_cond_t *fed_cond)

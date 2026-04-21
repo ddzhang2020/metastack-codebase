@@ -119,6 +119,14 @@ Identical to the \fBcreate\fR command.
 .IP
 
 .TP
+<<<<<<< HEAD
+=======
+\fBactivate\fR <\fIENTITY\fR> <\fISPECS\fR>
+Activate an entity (account or user).
+.IP
+
+.TP
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 \fBarchive\fR {dump|load} <\fISPECS\fR>
 Write database information to a flat file or load information that has
 previously been written to a file.
@@ -136,6 +144,14 @@ Identical to the \fBadd\fR command.
 .IP
 
 .TP
+<<<<<<< HEAD
+=======
+\fBdeactivate\fR <\fIENTITY\fR> \fBwhere\fR <\fISPECS\fR>
+Deactivate the specified entities (account or user).
+.IP
+
+.TP
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 \fBdelete\fR <\fIENTITY\fR> \fBwhere\fR <\fISPECS\fR>
 Delete the specified entities.
 Identical to the \fBremove\fR command.
@@ -639,7 +655,11 @@ See the \fBEXAMPLES\fR section below.
 .SH "SPECIFICATIONS FOR ACCOUNTS"
 
 .LP
+<<<<<<< HEAD
 Accounts can be created, modified, and deleted with sacctmgr. These options
+=======
+Accounts can be created, modified, activate, deactivate and deleted with sacctmgr. These options
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 allow you to set the corresponding attributes or filter on them when
 querying for Accounts.
 
@@ -713,6 +733,23 @@ Accounts that are deleted within 24 hours of being created and did not have
 a job run in the account during that time will be removed from the database.
 Otherwise, the account will be marked as deleted and will be viewable with
 the \fBWithDeleted\fR flag.
+<<<<<<< HEAD
+=======
+.IP
+
+.TP
+\fBWithDeactivated\fR
+Display deactivated and active data.
+Deactivated and active accounts or users are marked as such and can be viewed using the
+the \fBWithDeactivated\fR flag.
+.IP
+
+.TP
+\fBOnlyDeactivated\fR
+Display deactivated data.
+Deactivated accounts or users are marked as such and can be viewed using the
+the \fBOnlyDeactivated\fR flag.
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 .P
 \fBNOTE\fR: If using the WithAssoc option you can also query against
 association specific information to view only certain associations
@@ -767,7 +804,11 @@ described in the \fILIST/SHOW ASSOCIATION FORMAT OPTIONS\fP section.
 .SH "SPECIFICATIONS FOR ASSOCIATIONS"
 
 .LP
+<<<<<<< HEAD
 Associations can be created, modified, and deleted with sacctmgr. These
+=======
+Associations can be created, modified, activate, deactivate and deleted with sacctmgr. These
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 options allow you to set the corresponding attributes or filter on them
 when querying for Associations.
 
@@ -3127,7 +3168,11 @@ in the \fILIST/SHOW ASSOCIATION FORMAT OPTIONS\fP section.
 .SH "SPECIFICATIONS FOR USERS"
 
 .LP
+<<<<<<< HEAD
 Users can be created, modified, and deleted with sacctmgr. These
+=======
+Users can be created, modified, activate, deactivate and deleted with sacctmgr. These
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 options allow you to set the corresponding attributes or filter on them
 when querying for Users.
 

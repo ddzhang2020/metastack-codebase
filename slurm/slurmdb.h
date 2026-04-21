@@ -93,6 +93,14 @@ typedef enum {
 	SLURMDB_RESOURCE_LICENSE
 } slurmdb_resource_type_t;
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/* "deactivated" (frozen) rows use this deleted column value  */
+#define SLURMDB_USER_DEACTIVATED 5
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 typedef enum {
 	SLURMDB_UPDATE_NOTSET,
 	SLURMDB_ADD_USER,
@@ -102,6 +110,19 @@ typedef enum {
 	SLURMDB_MODIFY_ASSOC,
 	SLURMDB_REMOVE_USER,
 	SLURMDB_REMOVE_ASSOC,
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	SLURMDB_ACTIVATE_USER,
+	SLURMDB_ACTIVATE_ASSOC,
+	SLURMDB_ACTIVATE_COORD,
+	SLURMDB_DEACTIVATE_USER,
+	SLURMDB_DEACTIVATE_ASSOC,
+	SLURMDB_DEACTIVATE_COORD,
+	SLURMDB_ACTIVATE_WCKEY,
+	SLURMDB_DEACTIVATE_WCKEY,
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	SLURMDB_REMOVE_COORD,
 	SLURMDB_ADD_QOS,
 	SLURMDB_REMOVE_QOS,
@@ -318,6 +339,12 @@ typedef struct {
 
 	uint16_t with_usage;  /* fill in usage */
 	uint16_t with_deleted; /* return deleted associations */
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	uint16_t only_deactivated; /* only return deactivated associations */
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	uint16_t with_raw_qos; /* return a raw qos or delta_qos */
 	uint16_t with_sub_accts; /* return sub acct information also */
 	uint16_t without_parent_info; /* don't give me parent id/name */
@@ -429,7 +456,13 @@ typedef enum {
 
 	/* Anything above this (0-15) will not be stored in the database. */
 	SLURMDB_ACCT_FLAG_BASE = 0x0000ffff,
+<<<<<<< HEAD
 
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	SLURMDB_ACCT_FLAG_DEACTIVATED = SLURM_BIT(8), /* This account is deactivated (frozen). */
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	SLURMDB_ACCT_FLAG_USER_COORD = SLURM_BIT(16),
 
 	SLURMDB_ACCT_FLAG_INVALID
@@ -1356,6 +1389,12 @@ typedef struct {
 	uint16_t with_assocs;
 	uint16_t with_coords;
 	uint16_t with_deleted;
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	uint16_t only_deactivated; /* only return deactivated users */
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	uint16_t with_wckeys;
 	uint16_t without_defaults;
 #ifdef __METASTACK_ASSOC_HASH
@@ -1587,6 +1626,31 @@ extern List slurmdb_accounts_modify(void *db_conn,
 extern List slurmdb_accounts_remove(void *db_conn,
 				    slurmdb_account_cond_t *acct_cond);
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * activate accounts to accounting system
+ * IN: slurmdb_add_assoc_cond_t *assoc_cond with cluster (optional) and acct
+ *     lists filled in along with any limits in the assoc rec.
+ * IN: slurmdb_account_rec_t *
+ * RET: Return char * to print out of what was activated or NULL and errno set on
+ *      error.
+ */
+extern char *slurmdb_accounts_activate_cond(void *db_conn,
+				       slurmdb_add_assoc_cond_t *activate_assoc,
+				       slurmdb_account_rec_t *acct);
+
+/*
+ * deactivate accounts from accounting system
+ * IN:  slurmdb_account_cond_t *acct_cond
+ * RET: List containing (char *'s) else NULL on error
+ * note List needs to be freed with slurm_list_destroy() when called
+ */
+extern List slurmdb_accounts_deactivate(void *db_conn,
+				    slurmdb_account_cond_t *acct_cond);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 
 /************** archive functions **************/
 
@@ -1640,6 +1704,20 @@ extern List slurmdb_associations_modify(void *db_conn,
 extern List slurmdb_associations_remove(void *db_conn,
 					slurmdb_assoc_cond_t *assoc_cond);
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * deactivate associations from accounting system
+ * IN:  slurmdb_assoc_cond_t *assoc_cond
+ * RET: List containing (char *'s) else NULL on error
+ * note List needs to be freed with slurm_list_destroy() when called
+ */
+extern List slurmdb_associations_deactivate(void *db_conn,
+					  slurmdb_assoc_cond_t *assoc_cond);
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 /************** cluster functions **************/
 
 /*
@@ -2282,7 +2360,32 @@ extern List slurmdb_users_modify(void *db_conn,
 extern List slurmdb_users_remove(void *db_conn,
 				 slurmdb_user_cond_t *user_cond);
 
+<<<<<<< HEAD
 
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * activate users to accounting system
+ * IN: slurmdb_add_assoc_cond_t *assoc_cond with cluster (optional) acct
+ *     and user lists filled in along with any limits in the assoc rec.
+ * IN: slurmdb_user_rec_t *
+ * RET: Return char * to print out of what was activated or NULL and errno set on
+ *      error.
+ */
+extern char *slurmdb_users_activate_cond(void *db_conn,
+				    slurmdb_add_assoc_cond_t *activate_assoc,
+				    slurmdb_user_rec_t *user);
+
+/*
+ * deactivate users from accounting system
+ * IN:  slurmdb_user_cond_t *user_cond
+ * RET: List containing (char *'s) else NULL on error
+ * note List needs to be freed with slurm_list_destroy() when called
+ */
+extern List slurmdb_users_deactivate(void *db_conn,
+				 slurmdb_user_cond_t *user_cond);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 /************** user report functions **************/
 
 

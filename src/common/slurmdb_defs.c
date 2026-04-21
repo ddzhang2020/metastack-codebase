@@ -1966,6 +1966,12 @@ static const struct {
 	T(SLURMDB_ACCT_FLAG_WASSOC, "WithAssociations"),
 	T(SLURMDB_ACCT_FLAG_WCOORD, "WithCoordinators"),
 	T(SLURMDB_ACCT_FLAG_USER_COORD_NO, "NoUsersAreCoords"),
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	T(SLURMDB_ACCT_FLAG_DEACTIVATED, "Deactivated"),
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 	T(SLURMDB_ACCT_FLAG_USER_COORD, "UsersAreCoords"),
 	T(SLURMDB_ACCT_FLAG_INVALID, "INVALID"),
 };

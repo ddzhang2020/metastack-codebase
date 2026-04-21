@@ -22,12 +22,22 @@ sacctmgr [<OPTION>] [<COMMAND>]
 
   Valid <COMMAND> values are:
      add <ENTITY> <SPECS>     add entity
+<<<<<<< HEAD
+=======
+     activate <ENTITY> <SPECS>
+                              activate account or user 
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
      archive <DUMP/LOAD> <SPECS>
                               Archive past jobs and/or steps, or load them
                               back into the databse.
      associations             when using show/list will list the
                               associations associated with the entity.
      clear stats              clear server statistics
+<<<<<<< HEAD
+=======
+     deactivate <ENTITY> <SPECS>     
+                              deactivate account or user 
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
      delete <ENTITY> <SPECS>  delete the specified entity(s)
      dump <CLUSTER> [File=<FILENAME>]
                               dump database information of the
@@ -70,7 +80,11 @@ sacctmgr [<OPTION>] [<COMMAND>]
   <SPECS> are different for each command entity pair.
        list account       - Clusters=, Descriptions=, Flags=, Format=,
                             Names=, Organizations=, Parents=, WithAssoc,
+<<<<<<< HEAD
                             WithDeleted, WithCoordinators, WithRawQOS,
+=======
+                            WithDeleted, WithDeactivated, OnlyDeactivated, WithCoordinators, WithRawQOS,
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
                             and WOPLimits
        add account        - Clusters=, DefaultQOS=, Description=, Fairshare=,
                             Flags=, GrpTRESMins=, GrpTRES=, GrpJobs=,
@@ -78,6 +92,15 @@ sacctmgr [<OPTION>] [<COMMAND>]
                             MaxJobs=, MaxNodes=, MaxSubmitJobs=, MaxWall=,
                             Names=, Organization=, Parent=, Priority=
                             and QosLevel=
+<<<<<<< HEAD
+=======
+       activate account   - Clusters=, DefaultQOS=, Description=, Fairshare=,
+                            Flags=, GrpTRESMins=, GrpTRES=, GrpJobs=,
+                            GrpSubmitJob=, GrpWall=, MaxTRESMins=, MaxTRES=,
+                            MaxJobs=, MaxNodes=, MaxSubmitJobs=, MaxWall=,
+                            Names=, Organization=, Parent=, Priority=
+                            and QosLevel=
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
        modify account     - (set options) DefaultQOS=, Description=,
                             Fairshare=, Flags=, GrpTRESMins=, GrpTRESRunMins=,
                             GrpTRES=, GrpJobs=, GrpSubmitJob=, GrpWall=,
@@ -88,12 +111,21 @@ sacctmgr [<OPTION>] [<COMMAND>]
                             (where options) Clusters=, DefaultQOS=,
                             Descriptions=, Names=, Organizations=,
                             Parent=, Priority= and QosLevel=
+<<<<<<< HEAD
+=======
+       deactivate account - Clusters=, DefaultQOS=, Descriptions=, Flags=,
+                            Names=, Organizations=, and Parents=
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
        delete account     - Clusters=, DefaultQOS=, Descriptions=, Flags=,
                             Names=, Organizations=, and Parents=
 
        list associations  - Accounts=, Clusters=, Flags=, Format=, ID=,
                             OnlyDefaults, Partitions=, Parent=, Tree, Users=,
+<<<<<<< HEAD
                             WithSubAccounts, WithDeleted, WOLimits,
+=======
+                            WithSubAccounts, WithDeleted, WithDeactivated, OnlyDeactivated, WOLimits,
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
                             WOPInfo, and WOPLimits
 
        list cluster       - Classification=, DefaultQOS=, Federation=,
@@ -174,12 +206,24 @@ sacctmgr [<OPTION>] [<COMMAND>]
        list user          - AdminLevel=, DefaultAccount=,
                             DefaultWCKey=, Format=, Names=,
                             QosLevel=, WithAssoc, WithCoordinators,
+<<<<<<< HEAD
                             WithDeleted, WithRawQOS, and WOPLimits
+=======
+                            WithDeleted, WithDeactivated, OnlyDeactivated, WithRawQOS, and WOPLimits
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
        add user           - Accounts=, AdminLevel=, Clusters=, Comment=,
                             DefaultAccount=, DefaultQOS=, DefaultWCKey=,
                             Fairshare=, MaxTRESMins=, MaxTRES=,
                             MaxJobs=, MaxNodes=, MaxSubmitJobs=, MaxWall=,
                             Names=, Partitions=, Priority= and QosLevel=
+<<<<<<< HEAD
+=======
+       activate user      - Accounts=, AdminLevel=, Clusters=, Comment=,
+                            DefaultAccount=, DefaultQOS=, DefaultWCKey=,
+                            Fairshare=, MaxTRESMins=, MaxTRES=,
+                            MaxJobs=, MaxNodes=, MaxSubmitJobs=, MaxWall=,
+                            Names=, Partitions=, Priority= and QosLevel=
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
        modify user        - (set options) AdminLevel=, DefaultAccount=,
                             Comment=, DefaultQOS=, DefaultWCKey=, Fairshare=,
                             MaxTRESMins=, MaxTRES=, MaxJobs=, MaxNodes=,
@@ -189,6 +233,11 @@ sacctmgr [<OPTION>] [<COMMAND>]
                             (where options) Accounts=, AdminLevel=,
                             Clusters=, DefaultAccount=, Names=,
                             Partitions=, Priority= and QosLevel=
+<<<<<<< HEAD
+=======
+       deactivate user    - Accounts=, AdminLevel=, Clusters=,
+                            DefaultAccount=, DefaultWCKey=, and Names=
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
        delete user        - Accounts=, AdminLevel=, Clusters=,
                             DefaultAccount=, DefaultWCKey=, and Names=
 

@@ -296,6 +296,17 @@ extern int sacctmgr_dump_cluster(int argc, char **argv);
 extern int sacctmgr_archive_dump(int argc, char **argv);
 extern int sacctmgr_archive_load(int argc, char **argv);
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern int sacctmgr_activate_user(int argc, char **argv);
+extern int sacctmgr_activate_account(int argc, char **argv);
+
+extern int sacctmgr_deactivate_user(int argc, char **argv);
+extern int sacctmgr_deactivate_account(int argc, char **argv);
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 /* common.c */
 extern int parse_option_end(char *option);
 extern char *strip_quotes(char *option, int *increased, bool make_lower);

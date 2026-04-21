@@ -66,6 +66,10 @@ int check_header_version(header_t * header)
 	if (slurmdbd_conf) {
 #ifdef __META_PROTOCOL
 		if ((header->version != SLURM_PROTOCOL_VERSION)     &&
+<<<<<<< HEAD
+=======
+			(header->version != META_3_1_PROTOCOL_VERSION)  &&
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 		    (header->version != META_3_0_PROTOCOL_VERSION)  &&		
 		    (header->version != SLURM_ONE_BACK_PROTOCOL_VERSION) &&
 		    (header->version != SLURM_TWO_BACK_PROTOCOL_VERSION) &&
@@ -96,6 +100,10 @@ int check_header_version(header_t * header)
 		default:
 #ifdef __META_PROTOCOL
 			if ((header->version != SLURM_PROTOCOL_VERSION)     &&
+<<<<<<< HEAD
+=======
+				(header->version != META_3_1_PROTOCOL_VERSION)  &&
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 			    (header->version != META_3_0_PROTOCOL_VERSION)  &&
 			    (header->version !=
 			     SLURM_ONE_BACK_PROTOCOL_VERSION) &&

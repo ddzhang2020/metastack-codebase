@@ -68,6 +68,41 @@ extern char *slurmdb_accounts_add_cond(void *db_conn,
 		db_conn, db_api_uid, add_assoc, acct);
 }
 
+<<<<<<< HEAD
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+/*
+ * deactivate accounts from accounting system
+ * IN:  slurmdb_account_cond_t *acct_cond
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List slurmdb_accounts_deactivate(void *db_conn,
+				    slurmdb_account_cond_t *acct_cond)
+{
+	if (db_api_uid == -1)
+		db_api_uid = getuid();
+
+	return acct_storage_g_remove_accounts(db_conn, db_api_uid, true, acct_cond);
+}
+/*
+ * activate existing accounts in the accounting system
+ * IN:  slurmdb_acct_cond_t *acct_cond
+ * IN:  slurmdb_account_rec_t *acct
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List slurmdb_accounts_activate(void *db_conn,
+				    slurmdb_account_cond_t *acct_cond,
+				    slurmdb_account_rec_t *acct)
+{
+	if (db_api_uid == -1)
+		db_api_uid = getuid();
+
+	return acct_storage_g_activate_accounts(db_conn, db_api_uid,
+					      acct_cond, acct);
+}
+#endif
+
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 /*
  * get info from the storage
  * IN:  slurmdb_account_cond_t *
@@ -112,5 +147,13 @@ extern List slurmdb_accounts_remove(void *db_conn,
 	if (db_api_uid == -1)
 		db_api_uid = getuid();
 
+<<<<<<< HEAD
 	return acct_storage_g_remove_accounts(db_conn, db_api_uid, acct_cond);
+=======
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return acct_storage_g_remove_accounts(db_conn, db_api_uid, false, acct_cond);
+#else
+	return acct_storage_g_remove_accounts(db_conn, db_api_uid, acct_cond);
+#endif
+>>>>>>> 0d3a2b8b54d231fa37f534da31b0d79c1d5deed3
 }
