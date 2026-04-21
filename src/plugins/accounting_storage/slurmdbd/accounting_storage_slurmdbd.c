@@ -1535,6 +1535,9 @@ extern int acct_storage_p_modify_reservation(void *db_conn,
 }
 
 extern List acct_storage_p_remove_users(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
 					slurmdb_user_cond_t *user_cond)
 {
 	persist_msg_t req = {0};
@@ -1547,13 +1550,21 @@ extern List acct_storage_p_remove_users(void *db_conn, uint32_t uid,
 	memset(&get_msg, 0, sizeof(dbd_cond_msg_t));
 	get_msg.cond = user_cond;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	req.msg_type = is_deactivate ? DBD_DEACTIVATE_USERS : DBD_REMOVE_USERS;
+#else
 	req.msg_type = DBD_REMOVE_USERS;
+#endif
 	req.conn = db_conn;
 	req.data = &get_msg;
 	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
 
 	if (rc != SLURM_SUCCESS)
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		error("%s failure: %m", is_deactivate ? "DBD_DEACTIVATE_USERS" : "DBD_REMOVE_USERS");
+#else
 		error("DBD_REMOVE_USERS failure: %m");
+#endif
 	else if (resp.msg_type == PERSIST_RC) {
 		persist_rc_msg_t *msg = resp.data;
 		if (msg->rc == SLURM_SUCCESS) {
@@ -1625,6 +1636,9 @@ extern List acct_storage_p_remove_coord(void *db_conn, uint32_t uid,
 }
 
 extern List acct_storage_p_remove_accts(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
 					slurmdb_account_cond_t *acct_cond)
 {
 	persist_msg_t req = {0};
@@ -1637,13 +1651,21 @@ extern List acct_storage_p_remove_accts(void *db_conn, uint32_t uid,
 	memset(&get_msg, 0, sizeof(dbd_cond_msg_t));
 	get_msg.cond = acct_cond;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		req.msg_type = is_deactivate ? DBD_DEACTIVATE_ACCOUNTS : DBD_REMOVE_ACCOUNTS;
+#else
 	req.msg_type = DBD_REMOVE_ACCOUNTS;
+#endif
 	req.conn = db_conn;
 	req.data = &get_msg;
 	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
 
 	if (rc != SLURM_SUCCESS)
-		error("DBD_REMOVE_ACCTS failure: %m");
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		error("%s failure: %m", is_deactivate ? "DBD_DEACTIVATE_ACCOUNTS" : "DBD_REMOVE_ACCOUNTS");
+#else
+		error("DBD_REMOVE_ACCOUNTS failure: %m");
+#endif
 	else if (resp.msg_type == PERSIST_RC) {
 		persist_rc_msg_t *msg = resp.data;
 		if (msg->rc == SLURM_SUCCESS) {
@@ -1716,6 +1738,9 @@ extern List acct_storage_p_remove_clusters(void *db_conn, uint32_t uid,
 
 extern List acct_storage_p_remove_assocs(
 	void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	bool is_deactivate,
+#endif
 	slurmdb_assoc_cond_t *assoc_cond)
 {
 	persist_msg_t req = {0};
@@ -1729,13 +1754,21 @@ extern List acct_storage_p_remove_assocs(
 	memset(&get_msg, 0, sizeof(dbd_cond_msg_t));
 	get_msg.cond = assoc_cond;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	req.msg_type = is_deactivate ? DBD_DEACTIVATE_ASSOCS : DBD_REMOVE_ASSOCS;
+#else
 	req.msg_type = DBD_REMOVE_ASSOCS;
+#endif
 	req.conn = db_conn;
 	req.data = &get_msg;
 	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
 
 	if (rc != SLURM_SUCCESS)
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		error("%s failure: %m", is_deactivate ? "DBD_DEACTIVATE_ASSOCS" : "DBD_REMOVE_ASSOCS");
+#else
 		error("DBD_REMOVE_ASSOCS failure: %m");
+#endif
 	else if (resp.msg_type == PERSIST_RC) {
 		persist_rc_msg_t *msg = resp.data;
 		if (msg->rc == SLURM_SUCCESS) {
@@ -1762,56 +1795,139 @@ extern List acct_storage_p_remove_assocs(
 }
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-extern char *acct_storage_p_activate_users_cond(void *db_conn, uint32_t uid,
-					   slurmdb_add_assoc_cond_t *activate_assoc,
-					   slurmdb_user_rec_t *user)
+extern List acct_storage_p_activate_users(void *db_conn, uint32_t uid,
+					slurmdb_user_cond_t *user_cond,
+					slurmdb_user_rec_t *user)
 {
-	persist_msg_t req = {0};
-	dbd_modify_msg_t msg;
-	char *ret_str = NULL;
-	int rc, resp_code = SLURM_SUCCESS;
+	persist_msg_t req = {0}, resp = {0};
+	dbd_modify_msg_t get_msg;
+	dbd_list_msg_t *got_msg;
+	List ret_list = NULL;
+	int rc;
 
-	memset(&msg, 0, sizeof(msg));
-	msg.cond = activate_assoc;
-	msg.rec = user;
+	memset(&get_msg, 0, sizeof(dbd_modify_msg_t));
+	get_msg.cond = user_cond;
+	get_msg.rec = user;
 
-	req.msg_type = DBD_ACTIVATE_USERS_COND;
+	req.msg_type = DBD_ACTIVATE_USERS;
 	req.conn = db_conn;
-	req.data = &msg;
-	rc = dbd_conn_send_recv_rc_comment_msg(SLURM_PROTOCOL_VERSION,
-					       &req, &resp_code, &ret_str);
+	req.data = &get_msg;
+	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
 
-	if (resp_code != SLURM_SUCCESS)
-		rc = resp_code;
+	if (rc != SLURM_SUCCESS)
+		error("DBD_ACTIVATE_USERS failure: %m");
+	else if (resp.msg_type == PERSIST_RC) {
+		persist_rc_msg_t *msg = resp.data;
+		if (msg->rc == SLURM_SUCCESS) {
+			log_var(LOG_LEVEL_INFO, "%s", msg->comment);
+			ret_list = list_create(NULL);
+		} else {
+			slurm_seterrno(msg->rc);
+			error("%s", msg->comment);
+		}
+		slurm_persist_free_rc_msg(msg);
+	} else if (resp.msg_type != DBD_GOT_LIST) {
+		error("response type not DBD_GOT_LIST: %u",
+		      resp.msg_type);
+	} else {
+		got_msg = (dbd_list_msg_t *) resp.data;
+		ret_list = got_msg->my_list;
+		got_msg->my_list = NULL;
+		slurmdbd_free_list_msg(got_msg);
+	}
 
-	errno = rc;
-	return ret_str;
+	return ret_list;
 }
 
-extern char *acct_storage_p_activate_accts_cond(void *db_conn, uint32_t uid,
-					   slurmdb_add_assoc_cond_t *activate_assoc,
-					   slurmdb_account_rec_t *acct)
+extern List acct_storage_p_activate_accts(void *db_conn, uint32_t uid,
+					slurmdb_account_cond_t *acct_cond,
+					slurmdb_account_rec_t *acct)
+{
+	persist_msg_t req = {0}, resp = {0};
+	dbd_modify_msg_t get_msg;
+	dbd_list_msg_t *got_msg;
+	int rc;
+	List ret_list = NULL;
+
+	memset(&get_msg, 0, sizeof(dbd_modify_msg_t));
+	get_msg.cond = acct_cond;
+	get_msg.rec = acct;
+
+	req.msg_type = DBD_ACTIVATE_ACCOUNTS;
+	req.conn = db_conn;
+	req.data = &get_msg;
+	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
+
+	if (rc != SLURM_SUCCESS)
+		error("DBD_ACTIVATE_ACCOUNTS failure: %m");
+	else if (resp.msg_type == PERSIST_RC) {
+		persist_rc_msg_t *msg = resp.data;
+		if (msg->rc == SLURM_SUCCESS) {
+			log_var(LOG_LEVEL_INFO, "%s", msg->comment);
+			ret_list = list_create(NULL);
+		} else {
+			slurm_seterrno(msg->rc);
+			error("%s", msg->comment);
+		}
+		slurm_persist_free_rc_msg(msg);
+	} else if (resp.msg_type != DBD_GOT_LIST) {
+		error("response type not DBD_GOT_LIST: %u",
+		      resp.msg_type);
+	} else {
+		got_msg = (dbd_list_msg_t *) resp.data;
+		ret_list = got_msg->my_list;
+		got_msg->my_list = NULL;
+		slurmdbd_free_list_msg(got_msg);
+	}
+
+	return ret_list;
+}
+
+extern List acct_storage_p_activate_assocs(
+	void *db_conn, uint32_t uid,
+	slurmdb_assoc_cond_t *assoc_cond,
+	slurmdb_assoc_rec_t *assoc)
 {
 	persist_msg_t req = {0};
-	dbd_modify_msg_t msg;
-	char *ret_str = NULL;
-	int rc, resp_code = SLURM_SUCCESS;
+	dbd_modify_msg_t get_msg;
+	int rc;
+	persist_msg_t resp = {0};
+	dbd_list_msg_t *got_msg;
+	List ret_list = NULL;
 
-	memset(&msg, 0, sizeof(msg));
-	msg.cond = activate_assoc;
-	msg.rec = acct;
 
-	req.msg_type = DBD_ACTIVATE_ACCOUNTS_COND;
+	memset(&get_msg, 0, sizeof(dbd_modify_msg_t));
+	get_msg.cond = assoc_cond;
+	get_msg.rec = assoc;
+
+	req.msg_type = DBD_ACTIVATE_ASSOCS;
 	req.conn = db_conn;
-	req.data = &msg;
-	rc = dbd_conn_send_recv_rc_comment_msg(SLURM_PROTOCOL_VERSION,
-					       &req, &resp_code, &ret_str);
+	req.data = &get_msg;
+	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
 
-	if (resp_code != SLURM_SUCCESS)
-		rc = resp_code;
+	if (rc != SLURM_SUCCESS)
+		error("DBD_ACTIVATE_ASSOCS failure: %m");
+	else if (resp.msg_type == PERSIST_RC) {
+		persist_rc_msg_t *msg = resp.data;
+		if (msg->rc == SLURM_SUCCESS) {
+			log_var(LOG_LEVEL_INFO, "%s", msg->comment);
+			ret_list = list_create(NULL);
+		} else {
+			slurm_seterrno(msg->rc);
+			error("%s", msg->comment);
+		}
+		slurm_persist_free_rc_msg(msg);
+	} else if (resp.msg_type != DBD_GOT_LIST) {
+		error("response type not DBD_GOT_LIST: %u",
+		      resp.msg_type);
+	} else {
+		got_msg = (dbd_list_msg_t *) resp.data;
+		ret_list = got_msg->my_list;
+		got_msg->my_list = NULL;
+		slurmdbd_free_list_msg(got_msg);
+	}
 
-	errno = rc;
-	return ret_str;
+	return ret_list;
 }
 
 extern List acct_storage_p_deactivate_users(void *db_conn, uint32_t uid,
@@ -1838,98 +1954,6 @@ extern List acct_storage_p_deactivate_users(void *db_conn, uint32_t uid,
 		persist_rc_msg_t *msg = resp.data;
 		if (msg->rc == SLURM_SUCCESS) {
 			log_var(LOG_LEVEL_INFO, "%s", msg->comment);
-			ret_list = list_create(NULL);
-		} else {
-			slurm_seterrno(msg->rc);
-			error("%s", msg->comment);
-		}
-		slurm_persist_free_rc_msg(msg);
-	} else if (resp.msg_type != DBD_GOT_LIST) {
-		error("response type not DBD_GOT_LIST: %u",
-		      resp.msg_type);
-	} else {
-		got_msg = (dbd_list_msg_t *) resp.data;
-		ret_list = got_msg->my_list;
-		got_msg->my_list = NULL;
-		rc = got_msg->return_code;
-		slurmdbd_free_list_msg(got_msg);
-		errno = rc;
-	}
-
-	return ret_list;
-}
-
-extern List acct_storage_p_deactivate_accts(void *db_conn, uint32_t uid,
-					slurmdb_account_cond_t *acct_cond)
-{
-	persist_msg_t req = {0};
-	dbd_cond_msg_t get_msg;
-	int rc;
-	persist_msg_t resp = {0};
-	dbd_list_msg_t *got_msg;
-	List ret_list = NULL;
-
-	memset(&get_msg, 0, sizeof(dbd_cond_msg_t));
-	get_msg.cond = acct_cond;
-
-	req.msg_type = DBD_DEACTIVATE_ACCOUNTS;
-	req.conn = db_conn;
-	req.data = &get_msg;
-	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
-
-	if (rc != SLURM_SUCCESS)
-		error("DBD_DEACTIVATE_ACCOUNTS failure: %m");
-	else if (resp.msg_type == PERSIST_RC) {
-		persist_rc_msg_t *msg = resp.data;
-		if (msg->rc == SLURM_SUCCESS) {
-			info("%s", msg->comment);
-			ret_list = list_create(NULL);
-		} else {
-			slurm_seterrno(msg->rc);
-			error("%s", msg->comment);
-		}
-		slurm_persist_free_rc_msg(msg);
-	} else if (resp.msg_type != DBD_GOT_LIST) {
-		error("response type not DBD_GOT_LIST: %u",
-		      resp.msg_type);
-	} else {
-		got_msg = (dbd_list_msg_t *) resp.data;
-		ret_list = got_msg->my_list;
-		got_msg->my_list = NULL;
-		rc = got_msg->return_code;
-		slurmdbd_free_list_msg(got_msg);
-		errno = rc;
-	}
-
-	return ret_list;
-}
-
-extern List acct_storage_p_deactivate_assocs(
-	void *db_conn, uint32_t uid,
-	slurmdb_assoc_cond_t *assoc_cond)
-{
-	persist_msg_t req = {0};
-	dbd_cond_msg_t get_msg;
-	int rc;
-	persist_msg_t resp = {0};
-	dbd_list_msg_t *got_msg;
-	List ret_list = NULL;
-
-
-	memset(&get_msg, 0, sizeof(dbd_cond_msg_t));
-	get_msg.cond = assoc_cond;
-
-	req.msg_type = DBD_DEACTIVATE_ASSOCS;
-	req.conn = db_conn;
-	req.data = &get_msg;
-	rc = dbd_conn_send_recv(SLURM_PROTOCOL_VERSION, &req, &resp);
-
-	if (rc != SLURM_SUCCESS)
-		error("DBD_DEACTIVATE_ASSOCS failure: %m");
-	else if (resp.msg_type == PERSIST_RC) {
-		persist_rc_msg_t *msg = resp.data;
-		if (msg->rc == SLURM_SUCCESS) {
-			info("%s", msg->comment);
 			ret_list = list_create(NULL);
 		} else {
 			slurm_seterrno(msg->rc);

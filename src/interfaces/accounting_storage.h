@@ -315,6 +315,9 @@ extern int acct_storage_g_modify_reservation(void *db_conn,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_users(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_deactivate,
+#endif
 					slurmdb_user_cond_t *user_cond);
 
 /*
@@ -333,6 +336,9 @@ extern List acct_storage_g_remove_coord(void *db_conn, uint32_t uid,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_accounts(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					   bool is_deactivate,
+#endif
 					   slurmdb_account_cond_t *acct_cond);
 
 /*
@@ -349,58 +355,43 @@ extern List acct_storage_g_remove_clusters(void *db_conn, uint32_t uid,
  * RET: List containing (char *'s) else NULL on error
  */
 extern List acct_storage_g_remove_assocs(
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	void *db_conn, uint32_t uid, bool is_deactivate, slurmdb_assoc_cond_t *assoc_cond);
+#else
 	void *db_conn, uint32_t uid, slurmdb_assoc_cond_t *assoc_cond);
+#endif
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 /*
- * actiave users to accounting system
- * IN: slurmdb_add_assoc_cond_t *assoc_cond with cluster (optional) acct
- *     and user lists filled in along with any limits in the assoc rec.
- * IN: slurmdb_user_rec_t *
- * RET: Return char * to print out of what was added or NULL and errno set on
- *      error.
- */
-extern char *acct_storage_g_activate_users_cond(
-	void *db_conn, uint32_t uid,
-	slurmdb_add_assoc_cond_t *activate_assoc,
-	slurmdb_user_rec_t *user);
-
-/*
- * deactivate users from accounting system
+ * activate existing users in the accounting system
  * IN:  slurmdb_user_cond_t *user_cond
+ * IN:  slurmdb_user_rec_t *user
  * RET: List containing (char *'s) else NULL on error
  */
-extern List acct_storage_g_deactivate_users(void *db_conn, uint32_t uid,
-					    slurmdb_user_cond_t *user_cond);
+extern List acct_storage_g_activate_users(void *db_conn, uint32_t uid,
+					  slurmdb_user_cond_t *user_cond,
+					  slurmdb_user_rec_t *user);
 
 /*
- * activate accounts to accounting system
- * IN: slurmdb_add_assoc_cond_t *assoc_cond with cluster (optional) and acct
- *     lists filled in along with any limits in the assoc rec.
- * IN: slurmdb_account_rec_t *
- * RET: Return char * to print out of what was added or NULL and errno set on
- *      error.
- */
-extern char *acct_storage_g_activate_accounts_cond(
-	void *db_conn, uint32_t uid,
-	slurmdb_add_assoc_cond_t *activate_assoc,
-	slurmdb_account_rec_t *acct);
-
-/*
- * deactivate accounts from accounting system
- * IN:  slurmdb_account_cond_t *acct_cond
+ * activate existing accounts in the accounting system
+ * IN:  slurmdb_acct_cond_t *acct_cond
+ * IN:  slurmdb_account_rec_t *acct
  * RET: List containing (char *'s) else NULL on error
  */
-extern List acct_storage_g_deactivate_accounts(void *db_conn, uint32_t uid,
-					       slurmdb_account_cond_t *acct_cond);
+extern List acct_storage_g_activate_accounts(void *db_conn, uint32_t uid,
+					   slurmdb_account_cond_t *acct_cond,
+					   slurmdb_account_rec_t *acct);
 
 /*
- * deactivate associations from accounting system
+ * activate existing associations in the accounting system
  * IN:  slurmdb_assoc_cond_t *assoc_cond
+ * IN:  slurmdb_assoc_rec_t *assoc
  * RET: List containing (char *'s) else NULL on error
  */
-extern List acct_storage_g_deactivate_assocs(
-	void *db_conn, uint32_t uid, slurmdb_assoc_cond_t *assoc_cond);
+extern List acct_storage_g_activate_assocs(
+	void *db_conn, uint32_t uid,
+	slurmdb_assoc_cond_t *assoc_cond,
+	slurmdb_assoc_rec_t *assoc);
 #endif
 
 /*

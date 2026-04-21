@@ -965,10 +965,16 @@ static void _pack_modify_msg(dbd_modify_msg_t *msg, uint16_t rpc_version,
 
 	switch (type) {
 	case DBD_MODIFY_ACCOUNTS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+#endif
 		my_cond = slurmdb_pack_account_cond;
 		my_rec = slurmdb_pack_account_rec;
 		break;
 	case DBD_MODIFY_ASSOCS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ASSOCS:
+#endif
 		my_cond = slurmdb_pack_assoc_cond;
 		my_rec = slurmdb_pack_assoc_rec;
 		break;
@@ -993,20 +999,17 @@ static void _pack_modify_msg(dbd_modify_msg_t *msg, uint16_t rpc_version,
 		my_rec = slurmdb_pack_res_rec;
 		break;
 	case DBD_MODIFY_USERS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_USERS:
+#endif
 		my_cond = slurmdb_pack_user_cond;
 		my_rec = slurmdb_pack_user_rec;
 		break;
 	case DBD_ADD_ACCOUNTS_COND:
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_ACCOUNTS_COND:
-#endif
 		my_cond = slurmdb_pack_add_assoc_cond;
 		my_rec = slurmdb_pack_account_rec;
 		break;
 	case DBD_ADD_USERS_COND:
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_USERS_COND:
-#endif
 		my_cond = slurmdb_pack_add_assoc_cond;
 		my_rec = slurmdb_pack_user_rec;
 		break;
@@ -1030,10 +1033,16 @@ static int _unpack_modify_msg(dbd_modify_msg_t **msg, uint16_t rpc_version,
 
 	switch (type) {
 	case DBD_MODIFY_ACCOUNTS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNTS:
+#endif
 		my_cond = slurmdb_unpack_account_cond;
 		my_rec = slurmdb_unpack_account_rec;
 		break;
 	case DBD_MODIFY_ASSOCS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ASSOCS:
+#endif
 		my_cond = slurmdb_unpack_assoc_cond;
 		my_rec = slurmdb_unpack_assoc_rec;
 		break;
@@ -1058,20 +1067,17 @@ static int _unpack_modify_msg(dbd_modify_msg_t **msg, uint16_t rpc_version,
 		my_rec = slurmdb_unpack_res_rec;
 		break;
 	case DBD_MODIFY_USERS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_USERS:
+#endif
 		my_cond = slurmdb_unpack_user_cond;
 		my_rec = slurmdb_unpack_user_rec;
 		break;
 	case DBD_ADD_ACCOUNTS_COND:
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_ACCOUNTS_COND:
-#endif
 		my_cond = slurmdb_unpack_add_assoc_cond;
 		my_rec = slurmdb_unpack_account_rec;
 		break;
 	case DBD_ADD_USERS_COND:
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_USERS_COND:
-#endif
 		my_cond = slurmdb_unpack_add_assoc_cond;
 		my_rec = slurmdb_unpack_user_rec;
 		break;
@@ -1957,8 +1963,9 @@ extern buf_t *pack_slurmdbd_msg(persist_msg_t *req, uint16_t rpc_version)
 	case DBD_ADD_ACCOUNTS_COND:
 	case DBD_ADD_USERS_COND:
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_ACCOUNTS_COND:
-	case DBD_ACTIVATE_USERS_COND:
+	case DBD_ACTIVATE_ACCOUNTS:
+	case DBD_ACTIVATE_USERS:
+	case DBD_ACTIVATE_ASSOCS:
 #endif
 		_pack_modify_msg(
 			(dbd_modify_msg_t *)req->data, rpc_version,
@@ -2193,8 +2200,9 @@ extern int unpack_slurmdbd_msg(persist_msg_t *resp, uint16_t rpc_version,
 	case DBD_ADD_ACCOUNTS_COND:
 	case DBD_ADD_USERS_COND:
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-	case DBD_ACTIVATE_ACCOUNTS_COND:
-	case DBD_ACTIVATE_USERS_COND:
+	case DBD_ACTIVATE_ACCOUNTS:
+	case DBD_ACTIVATE_USERS:
+	case DBD_ACTIVATE_ASSOCS:
 #endif
 		rc = _unpack_modify_msg(
 			(dbd_modify_msg_t **)&resp->data,

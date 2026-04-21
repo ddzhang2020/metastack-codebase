@@ -162,16 +162,20 @@ typedef enum {
 				 * add_assoc_cond */
 	DBD_GET_INSTANCES,	/* Get instance information */
 	DBD_GOT_INSTANCES,	/* Response to DBD_GET_INSTANCES */
-	DBD_DEACTIVATE_ASSOCS,	/* Mark associations deactivated (deleted=SLURMDB_USER_DEACTIVATED) */
-	DBD_ACTIVATE_ASSOCS,	/* Restore deactivated associations (deleted=0) */
 	SLURM_DBD_MESSAGES_END = 2000, /* So that we don't overlap with any
 					* slurm_msg_type_t numbers. */
+
+#ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
+	DBD_GET_BORROW = 3000, 	/* Get node borrow information		*/
+	DBD_GOT_BORROW, 	/* Response to DBD_GET_BORROW		*/	
+	DBD_NODE_STATE_BORROW,		/* Record node borrow and return state transition		*/
+	DBD_FIX_BORROWAWAY_NODE,    /* Fix any borrowaway nodes */	
+#endif
+
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-	DBD_ACTIVATE_ACCOUNTS_COND,  /* Activate account to the mix with acct_rec and
-				 * add_assoc_cond */
-	DBD_ACTIVATE_USERS_COND,     /* Activate user to the mix with user_rec and
-				 * add_assoc_cond */
-	DBD_ACTIVATE_ASSOC,     /* Activate user to the mix with user_rec and
+	DBD_ACTIVATE_ACCOUNTS = 4000,  /* Activate deactivated account */
+	DBD_ACTIVATE_USERS,     /* Activate deactivated user */
+	DBD_ACTIVATE_ASSOCS,     /* Activate user to the mix with user_rec and
 				 * add_assoc_cond */
 	DBD_ACTIVATE_ACCOUNT_COORDS, /* Activate new coordinatior to an account   */
 	DBD_ACTIVATE_WCKEYS,	/* Activate WCKEY information   	        */
@@ -181,13 +185,6 @@ typedef enum {
 	DBD_DEACTIVATE_ACCOUNT_COORDS,/* Deactivate existing coordinator from
 				   * an account */
 	DBD_DEACTIVATE_WCKEYS,	/* Deactivate WCKEY information   	        */
-#endif
-
-#ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
-	DBD_GET_BORROW = 3000, 	/* Get node borrow information		*/
-	DBD_GOT_BORROW, 	/* Response to DBD_GET_BORROW		*/	
-	DBD_NODE_STATE_BORROW,		/* Record node borrow and return state transition		*/
-	DBD_FIX_BORROWAWAY_NODE,    /* Fix any borrowaway nodes */	
 #endif
 
 	SLURM_PERSIST_INIT = 6500, /* So we don't use the

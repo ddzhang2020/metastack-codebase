@@ -70,35 +70,33 @@ extern char *slurmdb_accounts_add_cond(void *db_conn,
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 /*
- * activate accounts to accounting system
- * IN:  account_list List of slurmdb_account_rec_t *
- * RET: SLURM_SUCCESS on success SLURM_ERROR else
- */
-extern char *slurmdb_accounts_activate_cond(void *db_conn,
-				       slurmdb_add_assoc_cond_t *activate_assoc,
-				       slurmdb_account_rec_t *acct)
-{
-	xassert(activate_assoc);
-
-	if (db_api_uid == -1)
-		db_api_uid = getuid();
-
-	return acct_storage_g_activate_accounts_cond(
-		db_conn, db_api_uid, activate_assoc, acct);
-}
-
-/*
  * deactivate accounts from accounting system
  * IN:  slurmdb_account_cond_t *acct_cond
  * RET: List containing (char *'s) else NULL on error
  */
 extern List slurmdb_accounts_deactivate(void *db_conn,
-				       slurmdb_account_cond_t *acct_cond)
+				    slurmdb_account_cond_t *acct_cond)
 {
 	if (db_api_uid == -1)
 		db_api_uid = getuid();
 
-	return acct_storage_g_deactivate_accounts(db_conn, db_api_uid, acct_cond);
+	return acct_storage_g_remove_accounts(db_conn, db_api_uid, true, acct_cond);
+}
+/*
+ * activate existing accounts in the accounting system
+ * IN:  slurmdb_acct_cond_t *acct_cond
+ * IN:  slurmdb_account_rec_t *acct
+ * RET: List containing (char *'s) else NULL on error
+ */
+extern List slurmdb_accounts_activate(void *db_conn,
+				    slurmdb_account_cond_t *acct_cond,
+				    slurmdb_account_rec_t *acct)
+{
+	if (db_api_uid == -1)
+		db_api_uid = getuid();
+
+	return acct_storage_g_activate_accounts(db_conn, db_api_uid,
+					      acct_cond, acct);
 }
 #endif
 
@@ -146,5 +144,9 @@ extern List slurmdb_accounts_remove(void *db_conn,
 	if (db_api_uid == -1)
 		db_api_uid = getuid();
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return acct_storage_g_remove_accounts(db_conn, db_api_uid, false, acct_cond);
+#else
 	return acct_storage_g_remove_accounts(db_conn, db_api_uid, acct_cond);
+#endif
 }

@@ -3668,42 +3668,7 @@ extern void slurmdb_pack_user_cond(void *in, uint16_t protocol_version,
 	slurmdb_user_cond_t *object = (slurmdb_user_cond_t *)in;
 
 #ifdef __META_PROTOCOL
-	if (protocol_version >= META_3_2_PROTOCOL_VERSION) {
-		if (!object) {
-			pack16(0, buffer);
-			slurmdb_pack_assoc_cond(
-				NULL, protocol_version, buffer);
-			pack32(NO_VAL, buffer);
-			pack32(NO_VAL, buffer);
-			pack16(0, buffer);
-			pack16(0, buffer);
-			pack16(0, buffer);
-			pack16(0, buffer);
-#ifdef __METASTACK_ASSOC_HASH
-			pack16(0, buffer);
-#endif
-			return;
-		}
-
-		pack16(object->admin_level, buffer);
-
-		slurmdb_pack_assoc_cond(object->assoc_cond,
-					protocol_version, buffer);
-
-		_pack_list_of_str(object->def_acct_list, buffer);
-		_pack_list_of_str(object->def_wckey_list, buffer);
-
-		pack16(object->with_assocs, buffer);
-		pack16(object->with_coords, buffer);
-		pack16(object->with_deleted, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-		pack16(object->only_deactivated, buffer);
-#endif
-		pack16(object->with_wckeys, buffer);
-#ifdef __METASTACK_ASSOC_HASH
-		pack16(object->is_ctld, buffer);
-#endif
-	} else if (protocol_version >= META_3_0_PROTOCOL_VERSION) {
+	if (protocol_version >= META_3_0_PROTOCOL_VERSION) {
 		if (!object) {
 			pack16(0, buffer);
 			slurmdb_pack_assoc_cond(
@@ -3838,52 +3803,7 @@ extern int slurmdb_unpack_user_cond(void **object, uint16_t protocol_version,
 	*object = object_ptr;
 
 #ifdef __META_PROTOCOL
-	if (protocol_version >= META_3_2_PROTOCOL_VERSION) {
-		safe_unpack16(&object_ptr->admin_level, buffer);
-
-		if (slurmdb_unpack_assoc_cond(
-				(void **)&object_ptr->assoc_cond,
-				protocol_version, buffer) == SLURM_ERROR)
-			goto unpack_error;
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			if (!object_ptr->def_acct_list)
-				object_ptr->def_acct_list =
-					list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(
-					&tmp_info, &uint32_tmp, buffer);
-				list_append(object_ptr->def_acct_list,
-						tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->def_wckey_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info,
-								&uint32_tmp, buffer);
-				list_append(object_ptr->def_wckey_list,
-						tmp_info);
-			}
-		}
-		safe_unpack16(&object_ptr->with_assocs, buffer);
-		safe_unpack16(&object_ptr->with_coords, buffer);
-		safe_unpack16(&object_ptr->with_deleted, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-		safe_unpack16(&object_ptr->only_deactivated, buffer);
-#endif
-		safe_unpack16(&object_ptr->with_wckeys, buffer);
-#ifdef __METASTACK_ASSOC_HASH
-		safe_unpack16(&object_ptr->is_ctld, buffer);
-#endif
-	} else if (protocol_version >= META_3_0_PROTOCOL_VERSION) {
+	if (protocol_version >= META_3_0_PROTOCOL_VERSION) {
 		safe_unpack16(&object_ptr->admin_level, buffer);
 
 		if (slurmdb_unpack_assoc_cond(
@@ -4617,67 +4537,7 @@ extern void slurmdb_pack_assoc_cond(void *in, uint16_t protocol_version,
 {
 	slurmdb_assoc_cond_t *object = (slurmdb_assoc_cond_t *)in;
 
-		if (protocol_version >= META_3_2_PROTOCOL_VERSION) {
-		if (!object) {
-			pack32(NO_VAL, buffer);
-			pack32(NO_VAL, buffer);
-
-			pack32(NO_VAL, buffer);
-
-			pack32(NO_VAL, buffer);
-			pack32(NO_VAL, buffer);
-
-			pack16(0, buffer);
-
-			pack32(NO_VAL, buffer);
-			pack32(NO_VAL, buffer);
-
-			pack32(NO_VAL, buffer);
-
-			pack_time(0, buffer);
-			pack_time(0, buffer);
-
-			pack32(NO_VAL, buffer);
-
-			pack16(0, buffer);
-			pack16(0, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-			pack16(0, buffer);
-#endif
-			pack16(0, buffer);
-			pack16(0, buffer);
-			pack16(0, buffer);
-			pack16(0, buffer);
-			return;
-		}
-
-		_pack_list_of_str(object->acct_list, buffer);
-		_pack_list_of_str(object->cluster_list, buffer);
-		_pack_list_of_str(object->def_qos_id_list, buffer);
-		_pack_list_of_str(object->format_list, buffer);
-		_pack_list_of_str(object->id_list, buffer);
-
-		pack16(object->only_defs, buffer);
-
-		_pack_list_of_str(object->partition_list, buffer);
-		_pack_list_of_str(object->parent_acct_list, buffer);
-		_pack_list_of_str(object->qos_list, buffer);
-
-		pack_time(object->usage_end, buffer);
-		pack_time(object->usage_start, buffer);
-
-		_pack_list_of_str(object->user_list, buffer);
-
-		pack16(object->with_usage, buffer);
-		pack16(object->with_deleted, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-		pack16(object->only_deactivated, buffer);
-#endif
-		pack16(object->with_raw_qos, buffer);
-		pack16(object->with_sub_accts, buffer);
-		pack16(object->without_parent_info, buffer);
-		pack16(object->without_parent_limits, buffer);
-	} else if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
+	if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		if (!object) {
 			pack32(NO_VAL, buffer);
 			pack32(NO_VAL, buffer);
@@ -4748,7 +4608,7 @@ extern int slurmdb_unpack_assoc_cond(void **object,
 	char *tmp_info = NULL;
 	*object = object_ptr;
 
-	if (protocol_version >= META_3_2_PROTOCOL_VERSION) {
+	if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
 		safe_unpack32(&count, buffer);
 		if (count > NO_VAL)
 			goto unpack_error;
@@ -4865,133 +4725,6 @@ extern int slurmdb_unpack_assoc_cond(void **object,
 
 		safe_unpack16(&object_ptr->with_usage, buffer);
 		safe_unpack16(&object_ptr->with_deleted, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-		safe_unpack16(&object_ptr->only_deactivated, buffer);
-#endif
-		safe_unpack16(&object_ptr->with_raw_qos, buffer);
-		safe_unpack16(&object_ptr->with_sub_accts, buffer);
-		safe_unpack16(&object_ptr->without_parent_info, buffer);
-		safe_unpack16(&object_ptr->without_parent_limits, buffer);
-	} else if (protocol_version >= SLURM_MIN_PROTOCOL_VERSION) {
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->acct_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->acct_list, tmp_info);
-			}
-		}
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->cluster_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->cluster_list,
-					    tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->def_qos_id_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->def_qos_id_list,
-					    tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count && (count != NO_VAL)) {
-			object_ptr->format_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->format_list, tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count != NO_VAL) {
-			object_ptr->id_list = list_create(xfree_ptr);
-			for(i=0; i<count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->id_list, tmp_info);
-			}
-		}
-
-		safe_unpack16(&object_ptr->only_defs, buffer);
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->partition_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->partition_list,
-					    tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->parent_acct_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->parent_acct_list,
-					    tmp_info);
-			}
-		}
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->qos_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->qos_list, tmp_info);
-			}
-		}
-
-		safe_unpack_time(&object_ptr->usage_end, buffer);
-		safe_unpack_time(&object_ptr->usage_start, buffer);
-
-		safe_unpack32(&count, buffer);
-		if (count > NO_VAL)
-			goto unpack_error;
-		if (count != NO_VAL) {
-			object_ptr->user_list = list_create(xfree_ptr);
-			for (i = 0; i < count; i++) {
-				safe_unpackstr_xmalloc(&tmp_info, &uint32_tmp,
-						       buffer);
-				list_append(object_ptr->user_list, tmp_info);
-			}
-		}
-
-		safe_unpack16(&object_ptr->with_usage, buffer);
-		safe_unpack16(&object_ptr->with_deleted, buffer);
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-		safe_unpack16(&object_ptr->only_deactivated, buffer);
-#endif
 		safe_unpack16(&object_ptr->with_raw_qos, buffer);
 		safe_unpack16(&object_ptr->with_sub_accts, buffer);
 		safe_unpack16(&object_ptr->without_parent_info, buffer);
@@ -7772,12 +7505,22 @@ extern void slurmdb_pack_update_object(slurmdb_update_object_t *object,
 	case SLURMDB_REMOVE_USER:
 	case SLURMDB_ADD_COORD:
 	case SLURMDB_REMOVE_COORD:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+	case SLURMDB_DEACTIVATE_USER:
+	case SLURMDB_ACTIVATE_COORD:
+	case SLURMDB_DEACTIVATE_COORD:
+#endif
 		my_function = slurmdb_pack_user_rec;
 		break;
 	case SLURMDB_ADD_ASSOC:
 	case SLURMDB_MODIFY_ASSOC:
 	case SLURMDB_REMOVE_ASSOC:
 	case SLURMDB_REMOVE_ASSOC_USAGE:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_ASSOC:
+	case SLURMDB_DEACTIVATE_ASSOC:
+#endif
 		my_function = slurmdb_pack_assoc_rec;
 		break;
 	case SLURMDB_ADD_QOS:
@@ -7791,6 +7534,10 @@ extern void slurmdb_pack_update_object(slurmdb_update_object_t *object,
 	case SLURMDB_ADD_WCKEY:
 	case SLURMDB_MODIFY_WCKEY:
 	case SLURMDB_REMOVE_WCKEY:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_WCKEY:
+	case SLURMDB_DEACTIVATE_WCKEY:
+#endif
 		my_function = slurmdb_pack_wckey_rec;
 		break;
 	case SLURMDB_ADD_CLUSTER:
@@ -7855,6 +7602,12 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_REMOVE_USER:
 	case SLURMDB_ADD_COORD:
 	case SLURMDB_REMOVE_COORD:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_USER:
+	case SLURMDB_DEACTIVATE_USER:
+	case SLURMDB_ACTIVATE_COORD:
+	case SLURMDB_DEACTIVATE_COORD:
+#endif
 		my_function = slurmdb_unpack_user_rec;
 		my_destroy = slurmdb_destroy_user_rec;
 		break;
@@ -7862,6 +7615,10 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_MODIFY_ASSOC:
 	case SLURMDB_REMOVE_ASSOC:
 	case SLURMDB_REMOVE_ASSOC_USAGE:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_ASSOC:
+	case SLURMDB_DEACTIVATE_ASSOC:
+#endif
 		my_function = slurmdb_unpack_assoc_rec;
 		my_destroy = slurmdb_destroy_assoc_rec;
 		break;
@@ -7878,6 +7635,10 @@ extern int slurmdb_unpack_update_object(slurmdb_update_object_t **object,
 	case SLURMDB_ADD_WCKEY:
 	case SLURMDB_MODIFY_WCKEY:
 	case SLURMDB_REMOVE_WCKEY:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case SLURMDB_ACTIVATE_WCKEY:
+	case SLURMDB_DEACTIVATE_WCKEY:
+#endif
 		my_function = slurmdb_unpack_wckey_rec;
 		my_destroy = slurmdb_destroy_wckey_rec;
 		break;

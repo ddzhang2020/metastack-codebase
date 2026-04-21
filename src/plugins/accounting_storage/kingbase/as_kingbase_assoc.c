@@ -1394,9 +1394,6 @@ static int _setup_assoc_cond_limits(slurmdb_assoc_cond_t *assoc_cond,
 	 */
 	if (assoc_cond->with_deleted)
 		xstrfmtcat(*extra, " (t1.deleted=0 or t1.deleted=1)");
-	else if (assoc_cond->with_deactivate)
-		xstrfmtcat(*extra, " (t1.deleted=0 or t1.deleted=%d)",
-			   SLURMDB_DELETED_DEACTIVATED);
 	else
 		xstrfmtcat(*extra, " t1.deleted=0");
 

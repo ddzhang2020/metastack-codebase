@@ -74,12 +74,36 @@ static int _set_cond(int *start, int argc, char **argv,
 			tree_display = 1;
 		} else if (!end && !xstrncasecmp(argv[i], "WithDeleted",
 						 MAX(command_len, 5))) {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'WithDeactivated', ignoring the latter.\n");
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+			}
+#endif
 			assoc_cond->with_deleted = 1;
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 		} else if (!end &&
+			   !xstrncasecmp(argv[i], "WithDeactivated",
+					 MAX(command_len, 5))) {
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'WithDeactivated', ignoring the latter.\n");
+				continue;
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeactivated' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+			}
+			assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DEACTIVATED;
+		} else if (!end &&
 			   !xstrncasecmp(argv[i], "OnlyDeactivated",
 					 MAX(command_len, 5))) {
-			assoc_cond->only_deactivated = 1;	
+			if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED) {
+				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				continue;
+			} else if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED) {
+				fprintf(stderr, "warning: 'WithDeactivated' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
+				continue;
+			} 
+			assoc_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
 #endif
 		} else if (!end &&
 			   !xstrncasecmp(argv[i], "WithRawQOSLevel",

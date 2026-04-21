@@ -166,6 +166,14 @@ extern int remove_common(mysql_conn_t *mysql_conn,
 			 bool *default_account);
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern int activate_common(mysql_conn_t *mysql_conn,
+			 uint16_t type,
+			 time_t now,
+			 char *user_name,
+			 char *table,
+			 char *cond_char,
+			 char *vals,
+			 char *cluster_name);
 extern int deactivate_common(mysql_conn_t *mysql_conn,
 			 uint16_t type,
 			 time_t now,

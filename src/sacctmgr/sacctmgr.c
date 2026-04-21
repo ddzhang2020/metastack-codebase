@@ -660,10 +660,10 @@ static void _activate_it(int argc, char **argv)
 	slurmdb_connection_commit(db_conn, 0);
 
 	/* First identify the entity to activate */
-	if (!xstrncasecmp(argv[0], "Account", MAX(command_len, 1))
+	if (xstrncasecmp(argv[0], "Accounts", MAX(command_len, 1)) == 0
 	    || !xstrncasecmp(argv[0], "Acct", MAX(command_len, 4))) {
 		error_code = sacctmgr_activate_account((argc - 1), &argv[1]);
-	} else if (!xstrncasecmp(argv[0], "User", MAX(command_len, 1))) {
+	} else if (xstrncasecmp(argv[0], "Users", MAX(command_len, 1)) == 0) {
 		error_code = sacctmgr_activate_user((argc - 1), &argv[1]);
 	} else {
 	helpme:
@@ -677,6 +677,7 @@ static void _activate_it(int argc, char **argv)
 		exit_code = 1;
 	}
 }
+
 
 /*
  * _deactivate_it - deactivate the entity per the supplied arguments
