@@ -404,6 +404,10 @@ typedef struct sbcast_cred sbcast_cred_t;		/* opaque data type */
 #define __METASTACK_OPT_INFLUXDB_ENFORCE
 #endif
 
+#ifndef __METASTACK_OPT_FAIL_BY_PART
+#define __METASTACK_OPT_FAIL_BY_PART
+#endif
+
 /* 
 	The process information of the job step is collected at the beginning of the job running to judge the application type
 */
