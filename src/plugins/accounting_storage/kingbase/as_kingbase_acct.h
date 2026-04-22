@@ -52,7 +52,16 @@ extern List as_kingbase_modify_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 			       slurmdb_account_rec_t *acct);
 
 extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			       bool is_deactivate,
+#endif
 			       slurmdb_account_cond_t *acct_cond);
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_kingbase_activate_accts(kingbase_conn_t *kingbase_conn, uint32_t uid,
+			       slurmdb_account_cond_t *acct_cond,
+			       slurmdb_account_rec_t *acct);
+#endif
 
 extern List as_kingbase_get_accts(kingbase_conn_t *kingbase_conn, uid_t uid,
 			    slurmdb_account_cond_t *acct_cond);

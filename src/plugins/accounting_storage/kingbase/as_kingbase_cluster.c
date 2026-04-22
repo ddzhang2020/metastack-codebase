@@ -959,7 +959,11 @@ extern List as_kingbase_remove_clusters(kingbase_conn_t *kingbase_conn, uint32_t
 		/* We need to remove these clusters from the wckey table */
 		memset(&wckey_cond, 0, sizeof(slurmdb_wckey_cond_t));
 		wckey_cond.cluster_list = ret_list;
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		tmp_list = as_kingbase_remove_wckeys(kingbase_conn, uid, false, &wckey_cond);
+#else
 		tmp_list = as_kingbase_remove_wckeys(kingbase_conn, uid, &wckey_cond);
+#endif
 		FREE_NULL_LIST(tmp_list);
 
 		itr = list_iterator_create(ret_list);

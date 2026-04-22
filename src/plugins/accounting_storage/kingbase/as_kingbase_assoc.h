@@ -56,7 +56,16 @@ extern List as_kingbase_modify_assocs(kingbase_conn_t *kingbase_conn, uint32_t u
 				   slurmdb_assoc_rec_t *assoc);
 
 extern List as_kingbase_remove_assocs(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				   bool is_deactivate,
+#endif
 				   slurmdb_assoc_cond_t *assoc_cond);
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_kingbase_activate_assocs(kingbase_conn_t *kingbase_conn, uint32_t uid,
+				   slurmdb_assoc_cond_t *assoc_cond,
+				   slurmdb_assoc_rec_t *assoc);
+#endif
 
 extern int as_kingbase_reset_lft_rgt(kingbase_conn_t *kingbase_conn, uid_t uid,
 				  List cluster_list);

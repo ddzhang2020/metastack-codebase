@@ -102,7 +102,7 @@ static int _set_cond(int *start, int argc, char **argv,
 			}
 #endif
 			acct_cond->flags |= SLURMDB_ACCT_FLAG_DELETED;
-			assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DELETED;
+			assoc_cond->with_deleted = 1;
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 		} else if (!end &&
 			   !xstrncasecmp(argv[i], "WithDeactivated",

@@ -1838,9 +1838,20 @@ no_user_table:
 		return NULL;
 	}
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_deactivate) 
+		query = xstrdup_printf(
+			"update %s set deleted=%d, mod_time=%ld where %s",
+			acct_coord_table, SLURMDB_USER_DEACTIVATED, (long)now, user_char);
+	else
+		query = xstrdup_printf(
+			"update %s set deleted=1, mod_time=%ld where %s",
+			acct_coord_table, (long)now, user_char);
+#else
 	query = xstrdup_printf(
 		"update %s set deleted=1, mod_time=%ld where %s",
 		acct_coord_table, (long)now, user_char);
+#endif
 	xfree(assoc_char);
 
 	rc = mysql_db_query(mysql_conn, query);
@@ -1874,6 +1885,8 @@ extern List as_mysql_activate_users(mysql_conn_t *mysql_conn, uint32_t uid,
 	MYSQL_RES *result = NULL;
 	MYSQL_ROW row;
 	List local_user_list = NULL;
+	slurmdb_user_cond_t user_coord_cond;
+	slurmdb_assoc_cond_t assoc_cond;
 
 	if (!user_cond || !user) {
 		error("we need something to activate");
@@ -1987,6 +2000,7 @@ no_user_table:
 	 * generate the update_list for slurmctld. 
 	 */
 	if (rc == SLURM_SUCCESS) {
+		user_cond->with_deleted = 0;
 		user_cond->with_coords = 1;
 		local_user_list = as_mysql_get_users(mysql_conn, uid, user_cond);
 		if (local_user_list) {
@@ -2043,6 +2057,18 @@ no_user_table:
 		}
 	}
 
+	/* activate the coordinator if it exists */
+	List coord_list = NULL;
+	memset(&user_coord_cond, 0, sizeof(slurmdb_user_cond_t));
+	memset(&assoc_cond, 0, sizeof(slurmdb_assoc_cond_t));
+
+	assoc_cond.user_list = ret_list;
+	user_coord_cond.assoc_cond = &assoc_cond;
+	coord_list = as_mysql_activate_coord(mysql_conn, uid, NULL, &user_coord_cond);
+	if (coord_list) {
+		FREE_NULL_LIST(coord_list);
+	}
+
 	/* activate the wckey if it exists */
 	slurmdb_wckey_cond_t wckey_cond;
 	slurmdb_wckey_rec_t wckey;
@@ -2056,7 +2082,7 @@ no_user_table:
 		&& user_cond->assoc_cond->cluster_list)
 		wckey_cond.cluster_list =
 			user_cond->assoc_cond->cluster_list;
-	tmp_list = as_mysql_modify_wckeys(mysql_conn, uid,
+	tmp_list = as_mysql_activate_wckeys(mysql_conn, uid,
 						&wckey_cond, &wckey);
 
 	if (!tmp_list) {
@@ -2066,6 +2092,208 @@ no_user_table:
 	FREE_NULL_LIST(tmp_list);
 end_it:
 	errno = rc;
+	return ret_list;
+}
+extern List as_mysql_activate_coord(mysql_conn_t *mysql_conn, uint32_t uid,
+				  List acct_list,
+				  slurmdb_user_cond_t *user_cond)
+{
+	char *query = NULL, *object = NULL, *extra = NULL, *last_user = NULL;
+	char *user_name = NULL;
+	time_t now = time(NULL);
+	int set = 0, is_admin=0, rc = SLURM_SUCCESS;
+	list_itr_t *itr = NULL;
+	slurmdb_user_rec_t *user_rec = NULL;
+	List ret_list = NULL;
+	List user_list = NULL;
+	MYSQL_RES *result = NULL;
+	MYSQL_ROW row;
+	slurmdb_user_rec_t user;
+
+	if (!user_cond && !acct_list) {
+		error("we need something to activate");
+		return NULL;
+	} else if (user_cond && user_cond->assoc_cond)
+		user_list = user_cond->assoc_cond->user_list;
+
+	if (check_connection(mysql_conn) != SLURM_SUCCESS)
+		return NULL;
+
+	memset(&user, 0, sizeof(slurmdb_user_rec_t));
+	user.uid = uid;
+
+	if (!(is_admin = is_user_min_admin_level(
+		      mysql_conn, uid, SLURMDB_ADMIN_OPERATOR))) {
+		if (slurmdbd_conf->flags & DBD_CONF_FLAG_DISABLE_COORD_DBD) {
+			error("Coordinator privilege revoked with DisableCoordDBD, only admins/operators can activate coordinators.");
+			errno = ESLURM_ACCESS_DENIED;
+			return NULL;
+		}
+		if (!is_user_any_coord(mysql_conn, &user)) {
+			error("Only admins/coordinators can "
+			      "activate coordinators");
+			errno = ESLURM_ACCESS_DENIED;
+			return NULL;
+		}
+	}
+
+	/* Leave it this way since we are using extra below */
+
+	if (user_list && list_count(user_list)) {
+		set = 0;
+		if (extra)
+			xstrcat(extra, " && (");
+		else
+			xstrcat(extra, "(");
+
+		itr = list_iterator_create(user_list);
+		while ((object = list_next(itr))) {
+			if (!object[0])
+				continue;
+			if (set)
+				xstrcat(extra, " || ");
+			xstrfmtcat(extra, "user='%s'", object);
+			set = 1;
+		}
+		list_iterator_destroy(itr);
+		xstrcat(extra, ")");
+	}
+
+	if (acct_list && list_count(acct_list)) {
+		set = 0;
+		if (extra)
+			xstrcat(extra, " && (");
+		else
+			xstrcat(extra, "(");
+
+		itr = list_iterator_create(acct_list);
+		while ((object = list_next(itr))) {
+			if (!object[0])
+				continue;
+			if (set)
+				xstrcat(extra, " || ");
+			xstrfmtcat(extra, "acct='%s'", object);
+			set = 1;
+		}
+		list_iterator_destroy(itr);
+		xstrcat(extra, ")");
+	}
+
+	if (!extra) {
+		errno = SLURM_ERROR;
+		DB_DEBUG(DB_ASSOC, mysql_conn->conn, "No conditions given");
+		return NULL;
+	}
+
+	query = xstrdup_printf(
+		"select user, acct from %s where deleted=%d && %s order by user",
+		acct_coord_table, SLURMDB_USER_DEACTIVATED, extra);
+
+	DB_DEBUG(DB_ASSOC, mysql_conn->conn, "query\n%s", query);
+	if (!(result =
+	      mysql_db_query_ret(mysql_conn, query, 0))) {
+		xfree(query);
+		xfree(extra);
+		errno = SLURM_ERROR;
+		return NULL;
+	}
+	xfree(query);
+	xfree(extra);
+	ret_list = list_create(xfree_ptr);
+	user_list = list_create(xfree_ptr);
+	set = 0;
+	while ((row = mysql_fetch_row(result))) {
+		char *query2 = NULL;
+		MYSQL_RES *result2 = NULL;
+		if (!is_admin) {
+			slurmdb_coord_rec_t *coord = NULL;
+			if (!user.coord_accts) { // This should never
+				// happen
+				error("We are here with no coord accts");
+				errno = ESLURM_ACCESS_DENIED;
+				FREE_NULL_LIST(ret_list);
+				FREE_NULL_LIST(user_list);
+				xfree(extra);
+				mysql_free_result(result);
+				return NULL;
+			}
+
+			itr = list_iterator_create(user.coord_accts);
+			while ((coord = list_next(itr))) {
+				if (!xstrcasecmp(coord->name, row[1]))
+					break;
+			}
+			list_iterator_destroy(itr);
+
+			if (!coord) {
+				error("User %s(%d) does not have the "
+				      "ability to change this account (%s)",
+				      user.name, user.uid, row[1]);
+				errno = ESLURM_ACCESS_DENIED;
+				FREE_NULL_LIST(ret_list);
+				FREE_NULL_LIST(user_list);
+				xfree(extra);
+				mysql_free_result(result);
+				return NULL;
+			}
+		}
+		query2 = xstrdup_printf( 
+			"SELECT c.acct, c.user, u.deleted AS user_deleted, a.deleted AS acct_deleted "
+			"FROM %s AS c LEFT JOIN %s AS u ON c.user = u.name LEFT JOIN "
+			"%s AS a ON c.acct = a.name WHERE c.user = '%s' AND c.acct = '%s' AND "
+			"u.deleted = 0 AND a.deleted = 0;",
+			 acct_coord_table, user_table, acct_table, row[0], row[1]);
+		if (!(result2 =
+		      mysql_db_query_ret(mysql_conn, query2, 0))) {
+			xfree(query2);
+			continue;
+		}
+		xfree(query2);
+		mysql_free_result(result2);
+
+		if (set)
+			xstrcat(extra, " || ");
+		xstrfmtcat(extra, "(user='%s' && acct='%s')", row[0], row[1]);
+		set = 1;
+
+		if (!last_user || xstrcasecmp(last_user, row[0])) {
+			list_append(user_list, xstrdup(row[0]));
+			last_user = row[0];
+		}
+		list_append(ret_list, xstrdup_printf("U = %-9s A = %-10s",
+						     row[0], row[1]));
+	}
+	mysql_free_result(result);
+
+	user_name = uid_to_string((uid_t) uid);
+	rc = activate_common(mysql_conn, DBD_ACTIVATE_ACCOUNT_COORDS,
+			   now, user_name, acct_coord_table,
+			   extra, NULL, NULL, NULL, NULL, NULL);
+	xfree(user_name);
+	xfree(extra);
+	if (rc == SLURM_ERROR) {
+		FREE_NULL_LIST(ret_list);
+		FREE_NULL_LIST(user_list);
+		errno = SLURM_ERROR;
+		return NULL;
+	}
+
+	/* get the update list set */
+	itr = list_iterator_create(user_list);
+	while ((last_user = list_next(itr))) {
+		user_rec = xmalloc(sizeof(slurmdb_user_rec_t));
+		user_rec->name = xstrdup(last_user);
+#ifdef __METASTACK_ASSOC_HASH
+		_get_user_coords(mysql_conn, user_rec, NULL, NULL, true);
+#endif
+		if (addto_update_list(mysql_conn->update_list,
+				      SLURMDB_ACTIVATE_COORD, user_rec)
+		    != SLURM_SUCCESS)
+			slurmdb_destroy_user_rec(user_rec);
+	}
+	list_iterator_destroy(itr);
+	FREE_NULL_LIST(user_list);
+
 	return ret_list;
 }
 #endif
@@ -2276,7 +2504,11 @@ extern List as_mysql_remove_coord(mysql_conn_t *mysql_conn, uint32_t uid,
 		_get_user_coords(mysql_conn, user_rec, NULL, NULL, true);
 #endif
 		if (addto_update_list(mysql_conn->update_list,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				      is_deactivate ? SLURMDB_DEACTIVATE_COORD : SLURMDB_REMOVE_COORD, user_rec)
+#else
 				      SLURMDB_REMOVE_COORD, user_rec)
+#endif
 		    != SLURM_SUCCESS)
 			slurmdb_destroy_user_rec(user_rec);
 	}
@@ -2349,7 +2581,8 @@ extern List as_mysql_get_users(mysql_conn_t *mysql_conn, uid_t uid,
 	if (user_cond->with_deleted)
 		xstrcat(extra, "where (deleted=0 || deleted=1)");
 #endif
-
+	else
+		xstrcat(extra, "where deleted=0");
 
 	user_list = _get_other_user_names_to_mod(mysql_conn, uid, user_cond);
 	if (user_list) {

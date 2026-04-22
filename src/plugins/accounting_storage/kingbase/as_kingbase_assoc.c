@@ -411,10 +411,17 @@ static int _make_sure_user_has_default_internal(
 
 	query = xstrdup_printf(
 		"select distinct is_def, acct, creation_time from "
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		"`%s_%s` where `user`='%s' and deleted!=1 and deleted != %d "
+		"ORDER BY is_def desc, creation_time desc "
+		"LIMIT 1;",
+		cluster, assoc_table, user, SLURMDB_USER_DEACTIVATED);
+#else
 		"`%s_%s` where `user`='%s' and deleted!=1 "
 		"ORDER BY is_def desc, creation_time desc "
 		"LIMIT 1;",
 		cluster, assoc_table, user);
+#endif
 	debug4("%d(%s:%d) query\n%s",
 	       kingbase_conn->conn, THIS_FILE, __LINE__, query);
 	if (!(result = kingbase_db_query_ret(
@@ -460,8 +467,13 @@ static int _make_sure_user_has_default_internal(
 	 * the update_list.
 	 */
 	query = xstrdup_printf(
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		"select id_assoc from `%s_%s` where `user`='%s' and is_def=1 and deleted!=1 and deleted!=%d LIMIT 1;",
+		cluster, assoc_table, user, SLURMDB_USER_DEACTIVATED);
+#else
 		"select id_assoc from `%s_%s` where `user`='%s' and is_def=1 and deleted!=1 LIMIT 1;",
 		cluster, assoc_table, user);
+#endif
 	DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "query\n%s",
 		 query);
 	if (!(result = kingbase_db_query_ret(
@@ -577,8 +589,13 @@ static int _move_account(kingbase_conn_t *kingbase_conn, uint32_t *lft, uint32_t
 
 	xstrfmtcat(query,
 		   "update `%s_%s` set mod_time=%ld, "
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		   "deleted = deleted - 2 WHERE deleted > 1 and deleted!=%d;",
+		   cluster, assoc_table, now, SLURMDB_USER_DEACTIVATED);
+#else
 		   "deleted = deleted - 2 WHERE deleted > 1;",
 		   cluster, assoc_table, now);
+#endif
 	xstrfmtcat(query,
 		   "update `%s_%s` set mod_time=%ld, "
 		   "parent_acct='%s', id_parent=%s where id_assoc = %s;",
@@ -721,8 +738,13 @@ static int _get_parent_id(
 	xassert(cluster);
 
 	query = xstrdup_printf("select id_assoc, lineage from `%s_%s` where `user`='' "
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			       "and deleted!=1 and deleted!=%d and acct='%s';",
+			       cluster, assoc_table, SLURMDB_USER_DEACTIVATED, parent);
+#else
 			       "and deleted!=1 and acct='%s';",
 			       cluster, assoc_table, parent);
+#endif
 	debug4("%d(%s:%d) query\n%s",
 	       kingbase_conn->conn, THIS_FILE, __LINE__, query);
 	//info("[query] line %d, %s: query: %s", __LINE__, __func__, query);
@@ -1134,9 +1156,16 @@ static int _modify_child_assocs(kingbase_conn_t *kingbase_conn,
 
 	/* We want all the sub accounts and user accounts */
 	xstrfmtcatat(query, &query_pos,
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		     "select distinct %s lineage from `%s_%s` where deleted!=1 and deleted!=%d and id_assoc!=%u and lineage like '%s%%' and ((`user` = '' and parent_acct = '%s')",
+		     object, assoc->cluster, assoc_table,
+		     SLURMDB_USER_DEACTIVATED, assoc->id, lineage, acct);
+#else
 		     "select distinct %s lineage from `%s_%s` where deleted!=1 and id_assoc!=%u and lineage like '%s%%' and ((`user` = '' and parent_acct = '%s')",
 		     object, assoc->cluster, assoc_table,
 		     assoc->id, lineage, acct);
+#endif
 	xfree(object);
 
 	if (!handle_child_parent)
@@ -1392,8 +1421,17 @@ static int _setup_assoc_cond_limits(slurmdb_assoc_cond_t *assoc_cond,
 	 * Don't use prefix here, always use t1 or we could get extra "deleted"
 	 * entries we don't want.
 	 */
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED)
+		xstrfmtcat(*extra, " (t1.deleted=0 or t1.deleted=1 or t1.deleted=%d)", SLURMDB_USER_DEACTIVATED);
+	else if (assoc_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED)
+		xstrfmtcat(*extra, " (t1.deleted=0 or t1.deleted=%d)", SLURMDB_USER_DEACTIVATED);
+	else if (assoc_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED)
+		xstrfmtcat(*extra, " t1.deleted=%d", SLURMDB_USER_DEACTIVATED);
+#else
 	if (assoc_cond->with_deleted)
 		xstrfmtcat(*extra, " (t1.deleted=0 or t1.deleted=1)");
+#endif
 	else
 		xstrfmtcat(*extra, " t1.deleted=0");
 
@@ -2247,6 +2285,9 @@ static int _process_remove_assoc_results(kingbase_conn_t *kingbase_conn,
 					 bool is_admin, List ret_list,
 					 bool *jobs_running,
 					 bool *default_account,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					 bool is_deactivate,
+#endif
 					 add_assoc_cond_t *add_assoc_cond)
 {
 	list_itr_t *itr = NULL;
@@ -2347,7 +2388,11 @@ static int _process_remove_assoc_results(kingbase_conn_t *kingbase_conn,
 		rem_assoc->id = slurm_atoul(KCIResultGetColumnValue(result, i, RASSOC_ID));
 		rem_assoc->cluster = xstrdup(cluster_name);
 		if (addto_update_list(kingbase_conn->update_list,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				      is_deactivate ? SLURMDB_DEACTIVATE_ASSOC : SLURMDB_REMOVE_ASSOC,
+#else
 				      SLURMDB_REMOVE_ASSOC,
+#endif
 				      rem_assoc) != SLURM_SUCCESS) {
 			slurmdb_destroy_assoc_rec(rem_assoc);
 			error("couldn't add to the update list");
@@ -2369,10 +2414,20 @@ static int _process_remove_assoc_results(kingbase_conn_t *kingbase_conn,
 skip_process:
 	user_name = uid_to_string((uid_t) user->uid);
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_deactivate)
+		rc = deactivate_common(kingbase_conn, DBD_DEACTIVATE_ASSOCS, now, user_name,
+				assoc_table, name_char, assoc_char, cluster_name,
+				ret_list, jobs_running, default_account);
+	else 
+		rc = remove_common(kingbase_conn, DBD_REMOVE_ASSOCS, now, user_name,
+				assoc_table, name_char, assoc_char, cluster_name,
+				ret_list, jobs_running, default_account);
+#else
 	rc = remove_common(kingbase_conn, DBD_REMOVE_ASSOCS, now, user_name,
 			   assoc_table, name_char, assoc_char, cluster_name,
 			   ret_list, jobs_running, default_account);
-
+#endif
 	/*
 	 * We need to check lfts after remove_common so we can avoid adding the
 	 * associations we just removed.
@@ -3601,9 +3656,15 @@ static int _add_assoc_internal(add_assoc_cond_t *add_assoc_cond)
 		int has_def_acct = 0;
 
 		/* Check if there is already a default account. */
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		query = xstrdup_printf("select id_assoc from `%s_%s` where `user`='%s' and acct!='%s' and is_def=1 and deleted!=1 and deleted!=%d;",
+				       assoc_in->cluster, assoc_table,
+				       assoc_in->user, assoc_in->acct, SLURMDB_USER_DEACTIVATED);
+#else
 		query = xstrdup_printf("select id_assoc from `%s_%s` where `user`='%s' and acct!='%s' and is_def=1 and deleted!=1;",
 				       assoc_in->cluster, assoc_table,
 				       assoc_in->user, assoc_in->acct);
+#endif
 		DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "query\n%s", query);
 		result = kingbase_db_query_ret(kingbase_conn, query, 1);
 		xfree(query);
@@ -3910,6 +3971,33 @@ static void _add_assoc_cond_user_internal(add_assoc_cond_t *add_assoc_cond)
 	user_assoc.user = add_assoc_cond->add_assoc->assoc.user;
 	user_assoc.uid = add_assoc_cond->add_assoc->assoc.uid;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	/* Check the association is deactivated */
+	char *query = xstrdup_printf("select acct,`user`,deleted from `%s_%s` where acct='%s' and"
+		"`user`='%s' and deleted=%d", 
+		user_assoc.cluster, assoc_table, user_assoc.acct, user_assoc.user, SLURMDB_USER_DEACTIVATED);
+	KCIResult *result = kingbase_db_query_ret(add_assoc_cond->kingbase_conn, query, 0);
+
+	xfree(query);
+
+	int cnt = 0;
+	if (result)
+		cnt = KCIResultGetRowCount(result);
+	KCIResultDealloc(result);
+	/* If so, just return */
+	if (cnt) {
+		char *tmp_str = xstrdup_printf(
+			"Association '%s/%s/%s' is deactivated. Please activate it.",
+		       user_assoc.cluster, user_assoc.acct, user_assoc.user);
+		debug2("%s", tmp_str);
+		xstrfmtcatat(add_assoc_cond->ret_str,
+			     &add_assoc_cond->ret_str_pos,
+			     "%s\n", tmp_str);
+		xfree(tmp_str);
+		return;
+	}
+#endif
+
 	rc = assoc_mgr_fill_in_assoc(
 		add_assoc_cond->kingbase_conn,
 		&user_assoc,
@@ -3962,6 +4050,35 @@ static int _add_assoc_cond_partition(void *x, void *arg)
 	user_assoc.user = add_assoc_cond->add_assoc->assoc.user;
 	user_assoc.uid = add_assoc_cond->add_assoc->assoc.uid;
 	user_assoc.partition = add_assoc_cond->add_assoc->assoc.partition;
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	/* Check the association is deactivated */
+	char *query = xstrdup_printf("select acct,`user`,`partition`,deleted from `%s_%s` where acct='%s' and"
+		"`user`='%s' and `partition`='%s' and deleted=%d", 
+		user_assoc.cluster, assoc_table, user_assoc.acct, user_assoc.user, user_assoc.partition, SLURMDB_USER_DEACTIVATED);
+	KCIResult *result = kingbase_db_query_ret(add_assoc_cond->kingbase_conn, query, 0);
+
+	xfree(query);
+	
+	int cnt = 0;
+	if (result)
+		cnt = KCIResultGetRowCount(result);
+	KCIResultDealloc(result);
+	/* If so, just return */
+	if (cnt) {
+		char *tmp_str = xstrdup_printf(
+			"Association '%s/%s/%s/%s' is deactivated on cluster %s. Please activate it.",
+		       user_assoc.cluster, user_assoc.acct,user_assoc.user, user_assoc.partition, user_assoc.cluster);
+		debug2("%s", tmp_str);
+		xstrfmtcatat(add_assoc_cond->ret_str,
+			     &add_assoc_cond->ret_str_pos,
+			     "%s\n", tmp_str);
+		xfree(tmp_str);
+		add_assoc_cond->add_assoc->assoc.partition = NULL;
+		add_assoc_cond->rc = SLURM_SUCCESS;
+		goto endit;
+	}
+#endif
 
 	/*
 	 * We want to look for this exact assoc, not the non-partition version
@@ -4154,6 +4271,48 @@ static int _add_assoc_cond_acct(void *x, void *arg)
 		xfree(tmp_str);
 		goto end_it;
 	}
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	int deleted_val = 0;
+	/* Check the association is deactivated */
+	char *query = xstrdup_printf("select acct,deleted from `%s_%s` where acct='%s' and `user`=''", 
+		acct_assoc.cluster, assoc_table, acct_assoc.acct);
+	KCIResult *result = kingbase_db_query_ret(add_assoc_cond->kingbase_conn, query, 0);
+
+	xfree(query);
+	if (!result)
+		return -1;
+
+	int count_tmp = KCIResultGetRowCount(result);
+	for(int i = 0; i < count_tmp; i++) {
+		deleted_val = slurm_atoul(KCIResultGetColumnValue(result, i, 0));
+
+		if (deleted_val == 0) {
+			char *tmp_str = xstrdup_printf(
+				" Account '%s' is active on cluster %s.",
+				acct_assoc.acct, acct_assoc.cluster);
+			debug2("%s", tmp_str);
+			xstrfmtcatat(add_assoc_cond->ret_str,
+					&add_assoc_cond->ret_str_pos,
+					"%s\n", tmp_str);
+			xfree(tmp_str);
+			KCIResultDealloc(result);
+			goto end_it;
+		} else if (deleted_val == SLURMDB_USER_DEACTIVATED) {
+			char *tmp_str = xstrdup_printf(
+				" Account '%s' is deactivated on cluster %s. Please activate it.",
+				acct_assoc.acct, acct_assoc.cluster);
+			debug2("%s", tmp_str);
+			xstrfmtcatat(add_assoc_cond->ret_str,
+					&add_assoc_cond->ret_str_pos,
+					"%s\n", tmp_str);
+			xfree(tmp_str);
+			KCIResultDealloc(result);
+			goto end_it;
+		} 
+	}
+	KCIResultDealloc(result);
+#endif
 
 	add_assoc_cond->add_assoc->assoc.lineage = xstrdup_printf(
 		"%s%s/", add_assoc_cond->base_lineage,
@@ -5094,6 +5253,9 @@ is_same_user:
 }
 
 extern List as_kingbase_remove_assocs(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				   bool is_deactivate,
+#endif
 				   slurmdb_assoc_cond_t *assoc_cond)
 {
 	list_itr_t *itr = NULL;
@@ -5130,13 +5292,22 @@ extern List as_kingbase_remove_assocs(kingbase_conn_t *kingbase_conn, uint32_t u
 	if (!(is_admin = is_user_min_admin_level(
 		      kingbase_conn, uid, SLURMDB_ADMIN_OPERATOR))) {
 		if (slurmdbd_conf->flags & DBD_CONF_FLAG_DISABLE_COORD_DBD) {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			error("Coordinator privilege revoked with DisableCoordDBD, only admins/operators can %s associations.",
+			      is_deactivate ? "deactivate" : "remove");
+#else
 			error("Coordinator privilege revoked with DisableCoordDBD, only admins/operators can remove associations.");
+#endif
 			errno = ESLURM_ACCESS_DENIED;
 			return NULL;
 		}
 		if (!is_user_any_coord(kingbase_conn, &user)) {
 			error("Only admins/coordinators can "
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			      "%s associations", is_deactivate ? "deactivate" : "remove");
+#else
 			      "remove associations");
+#endif
 			errno = ESLURM_ACCESS_DENIED;
 			return NULL;
 		}
@@ -5240,6 +5411,9 @@ extern List as_kingbase_remove_assocs(kingbase_conn_t *kingbase_conn, uint32_t u
 						   name_char, is_admin,
 						   ret_list, &jobs_running,
 						   &default_account,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+						   is_deactivate,
+#endif
 						   &add_assoc_cond);
 		xfree(name_char);
 		KCIResultDealloc(result);
@@ -5289,6 +5463,884 @@ extern List as_kingbase_remove_assocs(kingbase_conn_t *kingbase_conn, uint32_t u
 		errno = SLURM_SUCCESS;
 	return ret_list;
 }
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+static int _process_activate_assoc_results(kingbase_conn_t *kingbase_conn,
+					 KCIResult *result,
+					 slurmdb_assoc_rec_t *assoc,
+					 slurmdb_user_rec_t *user,
+					 char *cluster_name, char *sent_vals,
+					 bool is_admin, bool same_user,
+					 List ret_list,
+					 slurmdb_assoc_cond_t *qos_assoc_cond,
+					 bitstr_t *wanted_qos)
+{
+	list_itr_t *itr = NULL;
+
+	int added = 0;
+	int rc = SLURM_SUCCESS;
+	int set_qos_vals = 0;
+	int moved_parent = 0;
+	char *query = NULL, *vals = NULL, *object = NULL, *name_char = NULL;
+	char *reset_query = NULL;
+	char *str = NULL;
+	time_t now = time(NULL);
+	uint32_t rpc_version = 0;
+	bool is_coord = false;
+	bool disable_coord_dbd = false;
+    char *with_assoc_sql[14] = { NULL };
+	xassert(result);
+
+	if (!KCIResultGetRowCount(result))
+		return SLURM_SUCCESS;
+
+	vals = xstrdup(sent_vals);
+
+	disable_coord_dbd = slurmdbd_conf->flags &
+		DBD_CONF_FLAG_DISABLE_COORD_DBD;
+	rpc_version = get_cluster_version(kingbase_conn, cluster_name);
+	for(int i = 0; i < KCIResultGetRowCount(result); i++){
+		KCIResult *result2 = NULL;
+		slurmdb_assoc_rec_t *mod_assoc = NULL, alt_assoc;
+		int account_type=0;
+		/* If parent changes these also could change
+		   so we need to keep track of the latest
+		   ones.
+		*/
+		uint32_t lft;
+		uint32_t rgt;
+		uint32_t id = slurm_atoul(KCIResultGetColumnValue(result, i, MASSOC_ID));
+		char *orig_acct, *account;
+
+		if (!_assoc_id_has_qos(kingbase_conn, cluster_name, id,
+				       wanted_qos))
+				continue;
+
+		lft = slurm_atoul(KCIResultGetColumnValue(result, i, MASSOC_LFT));
+		rgt = slurm_atoul(KCIResultGetColumnValue(result, i, MASSOC_RGT));
+		orig_acct = account = KCIResultGetColumnValue(result, i, MASSOC_ACCT);
+
+		slurmdb_init_assoc_rec(&alt_assoc, 0);
+
+		/* Here we want to see if the person
+		 * is a coord of the parent account
+		 * since we don't want him to be able
+		 * to alter the limits of the account
+		 * he is directly coord of.  They
+		 * should be able to alter the
+		 * sub-accounts though. If no parent account
+		 * that means we are talking about a user
+		 * association so account is really the parent
+		 * of the user a coord can change that all day long.
+		 */
+		char *temp = KCIResultGetColumnValue(result, i, MASSOC_PACCT);
+		if(temp != NULL && *temp != '\0')
+			account = temp;
+
+		/* If this is the same user all has been done
+		   previously to make sure the user is only changing
+		   things they are allowed to change.
+		*/
+		if (!is_admin && !same_user) {
+			slurmdb_coord_rec_t *coord = NULL;
+
+			if (disable_coord_dbd) {
+				error("Coordinator privilege revoked with DisableCoordDBD, only admins can modify accounts.");
+				rc = ESLURM_ACCESS_DENIED;
+				goto end_it;
+			}
+			if (!user->coord_accts) { // This should never
+				// happen
+				error("We are here with no coord accts.");
+				rc = ESLURM_ACCESS_DENIED;
+				goto end_it;
+			}
+			itr = list_iterator_create(user->coord_accts);
+			while ((coord = list_next(itr))) {
+				if (!xstrcasecmp(coord->name, account))
+					break;
+			}
+			list_iterator_destroy(itr);
+
+			if (!coord) {
+				char *temp = KCIResultGetColumnValue(result, i, MASSOC_PACCT);
+				if (*temp != '\0')
+					error("User %s(%d) can not modify "
+					      "account (%s) because they "
+					      "are not coordinators of "
+					      "parent account '%s'.",
+					      user->name, user->uid,
+					      KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+					      KCIResultGetColumnValue(result, i, MASSOC_PACCT));
+				else
+					error("User %s(%d) does not have the "
+					      "ability to modify the account "
+					      "(%s).",
+					      user->name, user->uid,
+					      KCIResultGetColumnValue(result, i, MASSOC_ACCT));
+
+				rc = ESLURM_ACCESS_DENIED;
+				goto end_it;
+			} else if (!assoc_mgr_check_coord_qos(cluster_name,
+							     account,
+							     user->name,
+							     assoc->qos_list)) {
+				/*
+				 * The assoc READ_LOCK is locked in the caller.
+				 * This is only locking the qos READ_LOCK.
+				 */
+				assoc_mgr_lock_t locks = {
+					.qos = READ_LOCK,
+				};
+				char *requested_qos;
+
+				assoc_mgr_lock(&locks);
+				requested_qos = get_qos_complete_str(
+					assoc_mgr_qos_list, assoc->qos_list);
+				assoc_mgr_unlock(&locks);
+				error("Coordinator %s(%d) does not have the "
+				      "access to all the qos requested (%s), "
+				      "so they can't modify account "
+				      "%s with it.",
+				      user->name, user->uid, requested_qos,
+				      account);
+				xfree(requested_qos);
+				rc = ESLURM_ACCESS_DENIED;
+				goto end_it;
+			}
+			is_coord = true;
+		}
+		temp = KCIResultGetColumnValue(result, i, MASSOC_PART);
+		char *temp2 = KCIResultGetColumnValue(result, i, MASSOC_USER);
+		if (*temp != '\0') {
+			// see if there is a partition name
+			object = xstrdup_printf(
+				"C = %-10s A = %-20s U = %-9s P = %s",
+				cluster_name, KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+				KCIResultGetColumnValue(result, i, MASSOC_USER), temp);
+		} else if (*temp2 != '\0'){
+			object = xstrdup_printf(
+				"C = %-10s A = %-20s U = %-9s",
+				cluster_name, KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+				temp2);
+		} else {
+			if (assoc->parent_acct) {
+				if (!xstrcasecmp(KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+						assoc->parent_acct)) {
+					error("You can't make an account be a "
+					      "child of it's self");
+					continue;
+				} else if (!xstrcasecmp(KCIResultGetColumnValue(result, i, MASSOC_PACCT),
+							assoc->parent_acct)) {
+					DB_DEBUG(DB_ASSOC, kingbase_conn->conn,
+						 "Trying to move association to the same parent? Nothing to do.");
+					continue;
+				}
+
+				rc = _move_parent(kingbase_conn, user->uid,
+						  &lft, &rgt,
+						  cluster_name,
+						  KCIResultGetColumnValue(result, i, MASSOC_ID),
+						  KCIResultGetColumnValue(result, i, MASSOC_PACCT),
+						  assoc->parent_acct,
+						  now, rpc_version);
+
+				if ((rc == ESLURM_INVALID_PARENT_ACCOUNT)
+				    || (rc == ESLURM_SAME_PARENT_ACCOUNT)) {
+					continue;
+				} else if (rc != SLURM_SUCCESS)
+					break;
+				moved_parent = 1;
+			}
+			char *temp = KCIResultGetColumnValue(result, i, MASSOC_PACCT);
+			if (*temp != '\0') {
+				object = xstrdup_printf(
+					"C = %-10s A = %s of %s",
+					cluster_name, KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+					temp);
+			} else {
+				object = xstrdup_printf(
+					"C = %-10s A = %s",
+					cluster_name, KCIResultGetColumnValue(result, i, MASSOC_ACCT));
+			}
+			account_type = 1;
+		}
+		list_append(ret_list, object);
+		object = NULL;
+		added++;
+
+		if (name_char)
+			xstrfmtcat(name_char, " or id_assoc=%s",
+				   KCIResultGetColumnValue(result, i, MASSOC_ID));
+		else
+			xstrfmtcat(name_char, "(id_assoc=%s", KCIResultGetColumnValue(result, i, MASSOC_ID));
+
+		/* Only do this when not dealing with the root association. */
+		if (xstrcmp(orig_acct, "root") || KCIResultGetColumnValue(result, i, MASSOC_USER)[0]) {
+            int tmp_count=_get_parend(result2, account,query,cluster_name ,assoc_table, kingbase_conn, with_assoc_sql, 0);
+			if (tmp_count > 0) {
+				if (assoc->def_qos_id == INFINITE
+				    && (with_assoc_sql[ASSOC2_REQ_DEF_QOS] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_DEF_QOS])))
+					alt_assoc.def_qos_id = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_DEF_QOS]);
+
+				if ((assoc->max_jobs == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_MJ] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MJ])))
+					alt_assoc.max_jobs = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_MJ]);
+				if ((assoc->max_jobs_accrue == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_MJA] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MJA])))
+					alt_assoc.max_jobs_accrue = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_MJA]);
+				if ((assoc->min_prio_thresh == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_MPT] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MPT])))
+					alt_assoc.min_prio_thresh = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_MPT]);
+				if ((assoc->max_submit_jobs == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_MSJ] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MSJ])))
+					alt_assoc.max_submit_jobs = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_MSJ]);
+				if ((assoc->max_wall_pj == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_MWPJ] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MWPJ])))
+					alt_assoc.max_wall_pj = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_MWPJ]);
+				if ((assoc->priority == INFINITE)
+				    && (with_assoc_sql[ASSOC2_REQ_PRIO] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_PRIO])))
+					alt_assoc.priority = slurm_atoul(
+						with_assoc_sql[ASSOC2_REQ_PRIO]);
+
+				/* We don't have to copy these strings
+				 * or check for their existence,
+				 * slurmdb_combine_tres_strings will
+				 * do this for us below.
+				 */
+				if ((with_assoc_sql[ASSOC2_REQ_MTPJ] != NULL) &&  (strlen(with_assoc_sql[ASSOC2_REQ_MTPJ])))
+					alt_assoc.max_tres_pj =
+						with_assoc_sql[ASSOC2_REQ_MTPJ];
+				if ((with_assoc_sql[ASSOC2_REQ_MTPN] != NULL) &&  (strlen(with_assoc_sql[ASSOC2_REQ_MTPN])))
+					alt_assoc.max_tres_pn =
+						with_assoc_sql[ASSOC2_REQ_MTPN];
+				if ((with_assoc_sql[ASSOC2_REQ_MTMPJ] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MTMPJ])))
+					alt_assoc.max_tres_mins_pj =
+						with_assoc_sql[ASSOC2_REQ_MTMPJ];
+				if ((with_assoc_sql[ASSOC2_REQ_MTRM] != NULL) && (strlen(with_assoc_sql[ASSOC2_REQ_MTRM])))
+					alt_assoc.max_tres_run_mins =
+						with_assoc_sql[ASSOC2_REQ_MTRM];
+			}
+			for(int j =0 ; j < 14; j++) {
+				if(with_assoc_sql[j])
+				xfree(with_assoc_sql[j]);
+			}
+		}
+		mod_assoc = xmalloc(sizeof(slurmdb_assoc_rec_t));
+		slurmdb_init_assoc_rec(mod_assoc, 0);
+		mod_assoc->id = id;
+		mod_assoc->flags = slurm_atoul(KCIResultGetColumnValue(result, i, MASSOC_FLAGS));
+		mod_assoc->cluster = xstrdup(cluster_name);
+		if (moved_parent) {
+			/*
+			 * Now check to see if we are going to make a child of
+			 * this account the new parent. If so we need to move
+			 * that child to this accounts parent and then do the
+			 * move.
+			 */
+			_modify_child_assocs(kingbase_conn,
+					     mod_assoc,
+					     KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+					     KCIResultGetColumnValue(result, i, MASSOC_LINEAGE),
+					     ret_list,
+					     true,
+					     KCIResultGetColumnValue(result, i, MASSOC_PACCT),
+					     assoc->parent_acct,
+					     true);
+
+			mod_assoc->parent_acct = xstrdup(assoc->parent_acct);
+			rc = _set_lineage(kingbase_conn, mod_assoc,
+					  mod_assoc->parent_acct,
+					  KCIResultGetColumnValue(result, i, MASSOC_ACCT), NULL, NULL);
+		}
+
+		if (alt_assoc.def_qos_id != NO_VAL)
+			mod_assoc->def_qos_id = alt_assoc.def_qos_id;
+		else
+			mod_assoc->def_qos_id = assoc->def_qos_id;
+
+		mod_assoc->comment = xstrdup(assoc->comment);
+
+		mod_assoc->flags |= assoc->flags;
+
+		mod_assoc->is_def = assoc->is_def;
+
+		mod_assoc->shares_raw = assoc->shares_raw;
+
+		mod_tres_str(&mod_assoc->grp_tres,
+			     assoc->grp_tres, KCIResultGetColumnValue(result, i, MASSOC_GT),
+			     NULL, "grp_tres", &vals, mod_assoc->id, 1);
+		mod_tres_str(&mod_assoc->grp_tres_mins,
+			     assoc->grp_tres_mins, KCIResultGetColumnValue(result, i, MASSOC_GTM),
+			     NULL, "grp_tres_mins", &vals, mod_assoc->id, 1);
+		mod_tres_str(&mod_assoc->grp_tres_run_mins,
+			     assoc->grp_tres_run_mins, KCIResultGetColumnValue(result, i, MASSOC_GTRM),
+			     NULL, "grp_tres_run_mins", &vals,
+			     mod_assoc->id, 1);
+
+		mod_assoc->grp_jobs = assoc->grp_jobs;
+		mod_assoc->grp_jobs_accrue = assoc->grp_jobs_accrue;
+		mod_assoc->grp_submit_jobs = assoc->grp_submit_jobs;
+		mod_assoc->grp_wall = assoc->grp_wall;
+
+		mod_tres_str(&mod_assoc->max_tres_pj,
+			     assoc->max_tres_pj, KCIResultGetColumnValue(result, i, MASSOC_MTPJ),
+			     alt_assoc.max_tres_pj, "max_tres_pj",
+			     &vals, mod_assoc->id, 1);
+		mod_tres_str(&mod_assoc->max_tres_pn,
+			     assoc->max_tres_pn, KCIResultGetColumnValue(result, i, MASSOC_MTPN),
+			     alt_assoc.max_tres_pn, "max_tres_pn",
+			     &vals, mod_assoc->id, 1);
+		mod_tres_str(&mod_assoc->max_tres_mins_pj,
+			     assoc->max_tres_mins_pj, KCIResultGetColumnValue(result, i, MASSOC_MTMPJ),
+			     alt_assoc.max_tres_mins_pj, "max_tres_mins_pj",
+			     &vals, mod_assoc->id, 1);
+		mod_tres_str(&mod_assoc->max_tres_run_mins,
+			     assoc->max_tres_run_mins, KCIResultGetColumnValue(result, i, MASSOC_MTRM),
+			     alt_assoc.max_tres_run_mins, "max_tres_run_mins",
+			     &vals, mod_assoc->id, 1);
+
+		if (result2)
+			KCIResultDealloc(result2);
+
+		if (alt_assoc.max_jobs != NO_VAL)
+			mod_assoc->max_jobs = alt_assoc.max_jobs;
+		else
+			mod_assoc->max_jobs = assoc->max_jobs;
+		if (alt_assoc.max_jobs_accrue != NO_VAL)
+			mod_assoc->max_jobs_accrue = alt_assoc.max_jobs_accrue;
+		else
+			mod_assoc->max_jobs_accrue = assoc->max_jobs_accrue;
+		if (alt_assoc.min_prio_thresh != NO_VAL)
+			mod_assoc->min_prio_thresh = alt_assoc.min_prio_thresh;
+		else
+			mod_assoc->min_prio_thresh = assoc->min_prio_thresh;
+		if (alt_assoc.max_submit_jobs != NO_VAL)
+			mod_assoc->max_submit_jobs = alt_assoc.max_submit_jobs;
+		else
+			mod_assoc->max_submit_jobs = assoc->max_submit_jobs;
+		if (alt_assoc.max_wall_pj != NO_VAL)
+			mod_assoc->max_wall_pj = alt_assoc.max_wall_pj;
+		else
+			mod_assoc->max_wall_pj = assoc->max_wall_pj;
+		if (alt_assoc.priority != NO_VAL)
+			mod_assoc->priority = alt_assoc.priority;
+		else
+			mod_assoc->priority = assoc->priority;
+
+		if (is_coord &&
+		    assoc_mgr_check_assoc_lim_incr(mod_assoc, &str)) {
+			error("Coordinators can not increase %s above the parent limit",
+			      str);
+			xfree(str);
+			slurmdb_destroy_assoc_rec(mod_assoc);
+			xfree(reset_query);
+			rc = ESLURM_COORD_NO_INCREASE_JOB_LIMIT;
+			goto end_it;
+		}
+
+		if (assoc->qos_list && list_count(assoc->qos_list)) {
+			list_itr_t *new_qos_itr =
+				list_iterator_create(assoc->qos_list);
+			char *new_qos = NULL, *tmp_qos = NULL;
+			bool adding_straight = 0;
+
+			mod_assoc->qos_list = list_create(xfree_ptr);
+
+			while ((new_qos = list_next(new_qos_itr))) {
+				if (new_qos[0] == '-' || new_qos[0] == '+') {
+					list_append(mod_assoc->qos_list,
+						    xstrdup(new_qos));
+				} else if (new_qos[0]) {
+					list_append(mod_assoc->qos_list,
+						    xstrdup_printf("=%s",
+								   new_qos));
+				}
+
+				if (set_qos_vals)
+					continue;
+				/* Now we can set up the values and
+				   make sure we aren't over writing
+				   things that are really from the
+				   parent
+				*/
+				if (new_qos[0] == '-') {
+					xstrfmtcat(vals,
+						   ", qos=if (qos='', '', "
+						   "replace(replace("
+						   "qos, ',%s,', ','), "
+						   "',,', ','))"
+						   ", qos=if (qos=',', '', qos)"
+						   ", delta_qos=if (qos='', "
+						   "replace(concat(replace("
+						   "replace("
+						   "delta_qos, ',+%s,', ','), "
+						   "',-%s,', ','), "
+						   "',%s,'), ',,', ','), '')",
+						   new_qos+1, new_qos+1,
+						   new_qos+1, new_qos);
+				} else if (new_qos[0] == '+') {
+					xstrfmtcat(vals,
+						   ", qos=if (qos='', '', "
+						   "replace(concat("
+						   "replace(qos, ',%s,', ','), "
+						   "',%s,'), ',,', ',')), "
+						   "delta_qos=if ("
+						   "qos='', replace(concat("
+						   "replace(replace("
+						   "delta_qos, ',+%s,', ','), "
+						   "',-%s,', ','), "
+						   "',%s,'), ',,', ','), '')",
+						   new_qos+1, new_qos+1,
+						   new_qos+1, new_qos+1,
+						   new_qos);
+				} else if (new_qos[0]) {
+					xstrfmtcat(tmp_qos, ",%s", new_qos);
+					adding_straight = 1;
+				} else
+					xstrcat(tmp_qos, "");
+
+			}
+			list_iterator_destroy(new_qos_itr);
+
+			if (!set_qos_vals && tmp_qos) {
+				xstrfmtcat(vals, ", qos='%s%s', delta_qos=''",
+					   tmp_qos, adding_straight ? "," : "");
+			}
+			xfree(tmp_qos);
+
+			set_qos_vals = 1;
+		}
+
+		if ((assoc->qos_list ||
+		     (assoc->def_qos_id && (assoc->def_qos_id != NO_VAL)))) {
+			if (!qos_assoc_cond->acct_list)
+				qos_assoc_cond->acct_list =
+					list_create(xfree_ptr);
+			slurm_addto_char_list(qos_assoc_cond->acct_list,
+					      KCIResultGetColumnValue(result, i, MASSOC_ACCT));
+			if (KCIResultGetColumnValue(result, i, MASSOC_USER)[0]) {
+				if (!qos_assoc_cond->user_list)
+					qos_assoc_cond->user_list =
+						list_create(xfree_ptr);
+				slurm_addto_char_list(qos_assoc_cond->user_list,
+						      KCIResultGetColumnValue(result, i, MASSOC_USER));
+			}
+		}
+
+		if (account_type) {
+			_modify_child_assocs(kingbase_conn,
+					     mod_assoc,
+					     KCIResultGetColumnValue(result, i, MASSOC_ACCT),
+					     KCIResultGetColumnValue(result, i, MASSOC_LINEAGE),
+					     ret_list,
+					     moved_parent,
+					     KCIResultGetColumnValue(result, i, MASSOC_PACCT),
+					     assoc->parent_acct,
+					     false);
+		} else if ((assoc->is_def == 1) && KCIResultGetColumnValue(result, i, MASSOC_USER)[0]) {
+			/* Use fresh one here so we don't have to
+			   worry about dealing with bad values.
+			*/
+			slurmdb_assoc_rec_t tmp_assoc;
+			slurmdb_init_assoc_rec(&tmp_assoc, 0);
+			tmp_assoc.is_def = 1;
+			tmp_assoc.cluster = cluster_name;
+			tmp_assoc.acct = KCIResultGetColumnValue(result, i, MASSOC_ACCT);
+			tmp_assoc.user = KCIResultGetColumnValue(result, i, MASSOC_USER);
+			if ((rc = _reset_default_assoc(
+				     kingbase_conn, &tmp_assoc, &reset_query,
+				     moved_parent ? 0 : 1))
+			    != SLURM_SUCCESS) {
+				slurmdb_destroy_assoc_rec(mod_assoc);
+				xfree(reset_query);
+				goto end_it;
+			}
+		}
+		slurmdb_destroy_assoc_rec(mod_assoc);
+	}
+
+	/*
+	 * If we were only moving associations to where they already are then we
+	 * can get here
+	 */
+	if (!name_char)
+		goto end_it;
+
+	xstrcat(name_char, ")");
+
+	if (assoc->parent_acct) {
+		if (((rc == ESLURM_INVALID_PARENT_ACCOUNT)
+		     || (rc == ESLURM_SAME_PARENT_ACCOUNT))
+		    && added)
+			rc = SLURM_SUCCESS;
+	}
+
+	if (rc != SLURM_SUCCESS)
+		goto end_it;
+
+	if (vals && vals[0]) {
+		char *user_name = uid_to_string((uid_t) user->uid);
+		rc = activate_common(kingbase_conn, DBD_ACTIVATE_ASSOCS, now,
+				   user_name, assoc_table, name_char, vals,
+				   cluster_name);
+		xfree(user_name);
+		if (rc == SLURM_ERROR) {
+			error("Couldn't activate associations");
+			goto end_it;
+		}
+	}
+
+	if ((rpc_version < SLURM_23_11_PROTOCOL_VERSION) && moved_parent) {
+		List local_assoc_list = NULL;
+		slurmdb_assoc_cond_t local_assoc_cond;
+		/* now we need to send the update of the new parents and
+		 * limits, so just to be safe, send the whole
+		 * tree because we could have some limits that
+		 * were affected but not noticed.
+		 */
+		/* we can probably just look at the mod time now but
+		 * we will have to wait for the next revision number
+		 * since you can't query on mod time here and I don't
+		 * want to rewrite code to make it happen
+		 */
+
+		memset(&local_assoc_cond, 0,
+		       sizeof(slurmdb_assoc_cond_t));
+		local_assoc_cond.cluster_list = list_create(NULL);
+		list_append(local_assoc_cond.cluster_list, cluster_name);
+#ifdef __METASTACK_OPT_LIST_USER
+		local_assoc_list = as_kingbase_get_assocs(
+			kingbase_conn, user->uid, &local_assoc_cond, false);
+#else		
+		local_assoc_list = as_kingbase_get_assocs(
+			kingbase_conn, user->uid, &local_assoc_cond);
+#endif
+		FREE_NULL_LIST(local_assoc_cond.cluster_list);
+		if (!local_assoc_list)
+			goto end_it;
+
+
+		_move_assoc_list_to_update_list(kingbase_conn->update_list,
+						local_assoc_list);
+		FREE_NULL_LIST(local_assoc_list);
+	}
+
+	if (reset_query) {
+		DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "query\n%s", reset_query);
+		//info("[query] line %d, %s: query: %s", __LINE__, __func__, reset_query);
+		fetch_flag_t *fetch_flag = NULL;
+		fetch_result_t *data_rt = NULL;
+		fetch_flag = set_fetch_flag(false, false, false);
+		data_rt = xmalloc(sizeof(fetch_result_t));
+		rc = kingbase_for_fetch(kingbase_conn, reset_query, fetch_flag, data_rt);
+		free_res_data(data_rt, fetch_flag);
+		if(rc == SLURM_ERROR) {
+			error("Couldn't update defaults");
+		}
+	}
+end_it:
+	xfree(reset_query);
+	xfree(name_char);
+	xfree(vals);
+
+	return rc;
+}
+
+extern List as_kingbase_activate_assocs(kingbase_conn_t *kingbase_conn, uint32_t uid,
+				   slurmdb_assoc_cond_t *assoc_cond,
+				   slurmdb_assoc_rec_t *assoc)
+{
+	list_itr_t *itr = NULL;
+	List ret_list = NULL;
+	int rc = SLURM_SUCCESS;
+	char *object = NULL;
+	char *vals = NULL, *extra = NULL, *query = NULL;
+	int i = 0;
+	bool is_admin=0, same_user=0;
+	KCIResult *result = NULL;
+	slurmdb_user_rec_t user;
+	char *tmp_char1=NULL, *tmp_char2=NULL;
+	char *cluster_name = NULL;
+	char *prefix = "t1";
+	List use_cluster_list = NULL;
+	bool locked = false;
+	slurmdb_assoc_cond_t qos_assoc_cond;
+	bitstr_t *wanted_qos = NULL;
+	assoc_mgr_lock_t assoc_locks = {
+		.assoc = READ_LOCK,
+	};
+
+	if (!assoc_cond || !assoc) {
+		error("we need something to change");
+		return NULL;
+	}
+
+	if (check_connection(kingbase_conn) != SLURM_SUCCESS)
+		return NULL;
+
+	memset(&user, 0, sizeof(slurmdb_user_rec_t));
+	user.uid = uid;
+
+	if (!(is_admin = is_user_min_admin_level(
+		      kingbase_conn, uid, SLURMDB_ADMIN_OPERATOR))) {
+		if (is_user_any_coord(kingbase_conn, &user)) {
+			if (slurmdbd_conf->flags &
+			    DBD_CONF_FLAG_DISABLE_COORD_DBD) {
+				error("Coordinator privilege revoked with DisableCoordDBD, only admins/operators can activate associations.");
+				errno = ESLURM_ACCESS_DENIED;
+				return NULL;
+			}
+			if (assoc->parent_acct) {
+				rc = _foreach_is_coord(assoc->parent_acct,
+						       &user);
+				if (rc < 0) {
+					error("Coordinator %s(%d) tried to activate associations where they were not allowed",
+					      user.name, user.uid);
+					errno = ESLURM_ACCESS_DENIED;
+					return NULL;
+				}
+			}
+			goto is_same_user;
+		} else if (assoc_cond->user_list
+			   && (list_count(assoc_cond->user_list) == 1)) {
+			uid_t pw_uid;
+			char *name = NULL;
+			name = list_peek(assoc_cond->user_list);
+		        if ((uid_from_string (name, &pw_uid) >= 0)
+			    && (pw_uid == uid)) {
+				uint16_t is_def = assoc->is_def;
+				uint32_t def_qos_id = assoc->def_qos_id;
+				/* Make sure they aren't trying to
+				   change something they aren't
+				   allowed to.  Currently they are
+				   only allowed to change the default
+				   account, and default QOS.
+				*/
+				slurmdb_init_assoc_rec(assoc, 1);
+
+				assoc->is_def = is_def;
+				assoc->def_qos_id = def_qos_id;
+				same_user = 1;
+
+				goto is_same_user;
+			}
+		}
+
+		error("Only admins/coordinators can modify associations");
+		errno = ESLURM_ACCESS_DENIED;
+		return NULL;
+	}
+is_same_user:
+
+#ifdef __METASTACK_OPT_LIST_USER
+	(void) _setup_assoc_cond_limits(assoc_cond, prefix, &extra, false);
+#else
+	(void) _setup_assoc_cond_limits(assoc_cond, prefix, &extra);
+#endif 
+
+	/* This needs to be here to make sure we only modify the
+	   correct set of assocs The first clause was already
+	   taken care of above. */
+	if (assoc_cond->user_list && !list_count(assoc_cond->user_list)) {
+		debug4("no user specified looking at users");
+		xstrcat(extra, " and `user` != '' ");
+	} else if (!assoc_cond->user_list) {
+		debug4("no user specified looking at accounts");
+		xstrcat(extra, " and `user` = '' ");
+	}
+	xstrcat(vals, ", deleted=0");
+	if ((rc = setup_assoc_limits(assoc, &tmp_char1, &tmp_char2,
+				     &vals, QOS_LEVEL_MODIFY, 0))) {
+		xfree(tmp_char1);
+		xfree(tmp_char2);
+		xfree(vals);
+		xfree(extra);
+		errno = rc;
+		error("%s: Failed, setup_assoc_limits functions returned error",
+		      __func__);
+		return NULL;
+	}
+	xfree(tmp_char1);
+	xfree(tmp_char2);
+
+	if (!extra || (!vals && !assoc->parent_acct)) {
+		xfree(vals);
+		xfree(extra);
+		errno = SLURM_NO_CHANGE_IN_DATA;
+		error("Nothing to activate");
+		return NULL;
+	}
+
+	xstrfmtcat(object, "t1.%s", massoc_req_inx[0]);
+	for(i=1; i<MASSOC_COUNT; i++)
+		xstrfmtcat(object, ", t1.%s", massoc_req_inx[i]);
+
+	ret_list = list_create(xfree_ptr);
+
+	if (assoc_cond->cluster_list && list_count(assoc_cond->cluster_list))
+		use_cluster_list = assoc_cond->cluster_list;
+	else {
+		slurm_rwlock_rdlock(&as_kingbase_cluster_list_lock);
+		use_cluster_list = list_shallow_copy(as_kingbase_cluster_list);
+		locked = true;
+	}
+
+	if (assoc_cond->qos_list && list_count(assoc_cond->qos_list)) {
+		wanted_qos = bit_alloc(g_qos_count);
+		set_qos_bitstr_from_list(wanted_qos, assoc_cond->qos_list);
+		assoc_mgr_lock(&assoc_locks);
+	}
+
+	memset(&qos_assoc_cond, 0, sizeof(qos_assoc_cond));
+	itr = list_iterator_create(use_cluster_list);
+	while ((cluster_name = list_next(itr))) {
+		query = _setup_assoc_table_query2(cluster_name, object, extra,
+						 " ORDER BY lineage ");
+		DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "query\n%s", query);
+		//info("[query] line %d, %s: query: %s", __LINE__, __func__, query);
+		result = kingbase_db_query_ret(kingbase_conn, query, 0);
+		if (KCIResultGetStatusCode(result) != EXECUTE_TUPLES_OK) {
+			KCIResultDealloc(result);
+			xfree(query);
+			if (!strstr(KCIConnectionGetLastError(kingbase_conn->db_conn),"不存在")
+				|| strstr(KCIConnectionGetLastError(kingbase_conn->db_conn),"not exist")) {
+				FREE_NULL_LIST(ret_list);
+				ret_list = NULL;
+			}
+			break;
+		}
+		xfree(query);
+
+#ifdef __METASTACK_OPT_SACCTMGR_ADD_USER
+		uint32_t rpc_version = get_cluster_version(kingbase_conn, cluster_name);
+		if (rpc_version < SLURM_23_11_PROTOCOL_VERSION) {
+			slurm_mutex_lock(&assoc_lock);
+		}
+#endif
+		rc = _process_activate_assoc_results(kingbase_conn, result, assoc,
+						   &user, cluster_name, vals,
+						   is_admin, same_user,
+						   ret_list,
+						   &qos_assoc_cond,
+						   wanted_qos);
+		KCIResultDealloc(result);
+
+
+#ifdef __METASTACK_OPT_SACCTMGR_ADD_USER
+		if (rpc_version < SLURM_23_11_PROTOCOL_VERSION) {
+			slurm_mutex_unlock(&assoc_lock);
+		}
+#endif
+
+		if ((rc == ESLURM_INVALID_PARENT_ACCOUNT)
+		    || (rc == ESLURM_SAME_PARENT_ACCOUNT)) {
+			continue;
+		} else if (rc != SLURM_SUCCESS) {
+			FREE_NULL_LIST(ret_list);
+			ret_list = NULL;
+			break;
+		}
+
+		if (qos_assoc_cond.acct_list) {
+			if (!qos_assoc_cond.cluster_list)
+				qos_assoc_cond.cluster_list =
+					list_create(NULL);
+			list_append(qos_assoc_cond.cluster_list,
+				    cluster_name);
+		}
+	}
+
+	list_iterator_destroy(itr);
+
+	if (wanted_qos)
+		assoc_mgr_unlock(&assoc_locks);
+
+	FREE_NULL_BITMAP(wanted_qos);
+
+	if (ret_list && qos_assoc_cond.cluster_list) {
+#ifdef __METASTACK_OPT_LIST_USER
+		List local_assoc_list = as_kingbase_get_assocs(
+			kingbase_conn, uid, &qos_assoc_cond, false);
+#else
+		List local_assoc_list = as_kingbase_get_assocs(
+			kingbase_conn, uid, &qos_assoc_cond);
+#endif
+
+		if (local_assoc_list) {
+			mod_def_qos_t mod_def_qos;
+			memset(&mod_def_qos, 0, sizeof(mod_def_qos));
+			list_for_each(local_assoc_list,
+				      _foreach_check_default_qos,
+				      &mod_def_qos);
+			FREE_NULL_LIST(local_assoc_list);
+			if (mod_def_qos.ret_str) {
+				list_flush(ret_list);
+				list_append(ret_list, mod_def_qos.ret_str);
+				mod_def_qos.ret_str = NULL;
+				rc = ESLURM_NO_REMOVE_DEFAULT_QOS;
+				reset_kingbase_conn(kingbase_conn);
+			}
+		}
+	}
+	FREE_NULL_LIST(qos_assoc_cond.cluster_list);
+	FREE_NULL_LIST(qos_assoc_cond.acct_list);
+	FREE_NULL_LIST(qos_assoc_cond.user_list);
+
+	if (locked) {
+		FREE_NULL_LIST(use_cluster_list);
+		slurm_rwlock_unlock(&as_kingbase_cluster_list_lock);
+	}
+	xfree(vals);
+	xfree(object);
+	xfree(extra);
+
+	/**
+	 * Query activated associations via assoc_cond and 
+	 * generate the update_list for slurmctld. 
+	 */
+	assoc_cond->deleted = 0;
+#ifdef __METASTACK_OPT_LIST_USER
+	local_activate_assoc_list = as_kingbase_get_assocs(
+		kingbase_conn, uid, assoc_cond, false);
+#endif
+	if (local_activate_assoc_list) {
+		slurmdb_assoc_rec_t *assoc = NULL;
+		while ((assoc = slurm_list_pop(local_activate_assoc_list))) {
+			/*
+			* Only free the pointer on error as success will have
+			* moved it to update_list.
+			*/
+			if (addto_update_list(kingbase_conn->update_list,
+						SLURMDB_ACTIVATE_ASSOC,
+						assoc) != SLURM_SUCCESS)
+				slurmdb_destroy_assoc_rec(assoc);
+		}
+		FREE_NULL_LIST(local_activate_assoc_list);
+	}
+
+	if (!ret_list) {
+		reset_kingbase_conn(kingbase_conn);
+		errno = rc;
+		return NULL;
+	} else if (!list_count(ret_list)) {
+		reset_kingbase_conn(kingbase_conn);
+		errno = SLURM_NO_CHANGE_IN_DATA;
+		DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "didn't affect anything");
+		//info("[query] line %d, didn't affect anything", __LINE__);
+		return ret_list;
+	}
+
+	errno = rc;
+	return ret_list;
+}
+#endif
 
 #ifdef __METASTACK_OPT_LIST_USER
 extern List as_kingbase_get_assocs(kingbase_conn_t *kingbase_conn, uid_t uid,
@@ -5422,6 +6474,10 @@ extern int as_kingbase_reset_lft_rgt(kingbase_conn_t *kingbase_conn, uid_t uid,
 	memset(&user, 0, sizeof(slurmdb_user_rec_t));
 	user.uid = uid;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	char *sent_extra = "(deleted=1 or deleted=0";
+	xstrfmtcat(sent_extra, " or deleted=%d)", SLURMDB_USER_DEACTIVATED);
+#endif
 	itr = list_iterator_create(use_cluster_list);
 	while ((cluster_name = list_next(itr))) {
 		time_t now = time(NULL);
@@ -5443,7 +6499,11 @@ extern int as_kingbase_reset_lft_rgt(kingbase_conn_t *kingbase_conn, uid_t uid,
 		 * somehow got lft and rgt's messed up. */
 		if ((rc = _cluster_get_assocs(kingbase_conn, &user, &assoc_cond,
 					      cluster_name, tmp,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					      sent_extra,
+#else
 					      " deleted=1 or deleted=0",
+#endif
 					      is_admin, assoc_list))
 		    != SLURM_SUCCESS) {
 			info("fail for cluster %s", cluster_name);
@@ -5608,6 +6668,9 @@ extern int as_kingbase_reset_lft_rgt(kingbase_conn_t *kingbase_conn, uid_t uid,
 	}
 	list_iterator_destroy(itr);
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	xfree(sent_extra);
+#endif
 	xfree(tmp);
 
 	/* if (use_cluster_list == as_kingbase_cluster_list) */

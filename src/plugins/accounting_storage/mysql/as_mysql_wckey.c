@@ -230,11 +230,18 @@ static int _setup_wckey_cond_limits(slurmdb_wckey_cond_t *wckey_cond,
 	if (!wckey_cond)
 		return 0;
 
-	if (wckey_cond->with_deleted)
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (wckey_cond->with_deleted == SLURMDB_QUERY_WITH_DELETED)
 		xstrfmtcat(*extra, " where (%s.deleted=0 || %s.deleted=1 || %s.deleted=%d)",
 			   prefix, prefix, prefix, SLURMDB_USER_DEACTIVATED);
+	else if (wckey_cond->with_deleted == SLURMDB_QUERY_WITH_DEACTIVATED)
+		xstrfmtcat(*extra, " where (%s.deleted=0 || %s.deleted=%d)",
+			   prefix, prefix, SLURMDB_USER_DEACTIVATED);
+	else if (wckey_cond->with_deleted == SLURMDB_QUERY_ONLY_DEACTIVATED)
+		xstrfmtcat(*extra, " where  %s.deleted=%d",
+			   prefix, SLURMDB_USER_DEACTIVATED);
 #else
+	if (wckey_cond->with_deleted)
 		xstrfmtcat(*extra, " where (%s.deleted=0 || %s.deleted=1)",
 			   prefix, prefix);
 #endif
@@ -1162,7 +1169,7 @@ static int _cluster_activate_wckeys(mysql_conn_t *mysql_conn,
 	}
 
 	xfree(query);
-	rc = modify_common(mysql_conn, DBD_ACTIVATE_WCKEYS, now,
+	rc = activate_common(mysql_conn, DBD_ACTIVATE_WCKEYS, now,
 			   user_name, wckey_table, wckey_char,
 			   vals, cluster_name);
 	xfree(wckey_char);
@@ -1216,20 +1223,8 @@ extern List as_mysql_activate_wckeys(mysql_conn_t *mysql_conn,
 	}
 is_same_user:
 
-	xstrfmtcat(extra, " where %s.deleted=%d", prefix, SLURMDB_USER_DEACTIVATED);
-	if (wckey_cond->user_list && list_count(wckey_cond->user_list)) {
-		set = 0;
-		xstrcat(extra, " && (");
-		itr = list_iterator_create(wckey_cond->user_list);
-		while ((object = list_next(itr))) {
-			if (set)
-				xstrcat(extra, " || ");
-			xstrfmtcat(extra, "%s.user='%s'", prefix, object);
-			set = 1;
-		}
-		list_iterator_destroy(itr);
-		xstrcat(extra, ")");
-	}
+	wckey_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
+	(void) _setup_wckey_cond_limits(wckey_cond, &extra);
 
 	xstrcat(vals, ", deleted=0");
 	if (wckey->is_def == 1)
@@ -1264,6 +1259,7 @@ is_same_user:
 	xfree(user_name);
 
 	if (rc == SLURM_SUCCESS) {
+		wckey_cond->with_deleted = 0;
 		List local_wckey_list = as_mysql_get_wckeys(mysql_conn, uid, wckey_cond);
 		if (local_wckey_list) {
 			slurmdb_wckey_rec_t *tmp_wck = NULL;
@@ -1275,7 +1271,7 @@ is_same_user:
 				if (addto_update_list(mysql_conn->update_list,
 							SLURMDB_ACTIVATE_WCKEY,
 							tmp_wck) != SLURM_SUCCESS)
-					slurmdb_destroy_user_rec(tmp_wck);
+					slurmdb_destroy_wckey_rec(tmp_wck);
 			}
 			FREE_NULL_LIST(local_wckey_list);
 		}

@@ -54,7 +54,18 @@ extern List as_kingbase_modify_wckeys(kingbase_conn_t *kingbase_conn,
 				slurmdb_wckey_rec_t *wckey);
 extern List as_kingbase_remove_wckeys(kingbase_conn_t *kingbase_conn,
 				uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				  bool is_deactivate,
+#endif			
 				slurmdb_wckey_cond_t *wckey_cond);
+
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_kingbase_activate_wckeys(kingbase_conn_t *kingbase_conn,
+				uint32_t uid,
+				slurmdb_wckey_cond_t *wckey_cond,
+				slurmdb_wckey_rec_t *wckey);
+#endif
+
 extern List as_kingbase_get_wckeys(kingbase_conn_t *kingbase_conn, uid_t uid,
 			     slurmdb_wckey_cond_t *wckey_cond);
 #endif

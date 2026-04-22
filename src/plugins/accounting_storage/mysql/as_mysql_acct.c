@@ -338,12 +338,9 @@ static int _foreach_add_acct(void *x, void *arg)
 
 	cnt = mysql_num_rows(result);
 	row = mysql_fetch_row(result);
-	
-	mysql_free_result(result);
-
 	if (cnt) {
 		deleted_val = slurm_atoul(row[0]);
-
+		mysql_free_result(result);
 		if (deleted_val == 0) {
 			if (!add_acct_cond->ret_str)
 				xstrcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
@@ -359,6 +356,8 @@ static int _foreach_add_acct(void *x, void *arg)
 					"  Account '%s' exists but is deactivated. Please activate it.\n", name);
 			return 0;
 		} 
+	} else {
+		mysql_free_result(result);
 	}
 #else
 	/* Check to see if it is already in the acct_table */

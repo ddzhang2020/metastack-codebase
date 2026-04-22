@@ -264,6 +264,9 @@ static void _pack_cond_msg(dbd_cond_msg_t *msg, uint16_t rpc_version,
 		break;
 	case DBD_GET_WCKEYS:
 	case DBD_REMOVE_WCKEYS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_WCKEYS:
+#endif
 		my_function = slurmdb_pack_wckey_cond;
 		break;
 	case DBD_GET_USERS:
@@ -347,6 +350,9 @@ static int _unpack_cond_msg(dbd_cond_msg_t **msg, uint16_t rpc_version,
 		break;
 	case DBD_GET_WCKEYS:
 	case DBD_REMOVE_WCKEYS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_DEACTIVATE_WCKEYS:
+#endif
 		my_function = slurmdb_unpack_wckey_cond;
 		break;
 	case DBD_GET_USERS:
@@ -1870,6 +1876,10 @@ extern buf_t *pack_slurmdbd_msg(persist_msg_t *req, uint16_t rpc_version)
 		break;
 	case DBD_ADD_ACCOUNT_COORDS:
 	case DBD_REMOVE_ACCOUNT_COORDS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNT_COORDS:
+	case DBD_DEACTIVATE_ACCOUNT_COORDS:
+#endif
 		_pack_acct_coord_msg(
 			(dbd_acct_coord_msg_t *)req->data, rpc_version,
 			buffer);
@@ -1910,6 +1920,7 @@ extern buf_t *pack_slurmdbd_msg(persist_msg_t *req, uint16_t rpc_version)
 	case DBD_DEACTIVATE_ACCOUNTS:
 	case DBD_DEACTIVATE_ASSOCS:
 	case DBD_DEACTIVATE_USERS:
+	case DBD_DEACTIVATE_WCKEYS:
 #endif
 	case DBD_ARCHIVE_DUMP:
 #ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
@@ -2103,6 +2114,10 @@ extern int unpack_slurmdbd_msg(persist_msg_t *resp, uint16_t rpc_version,
 		break;
 	case DBD_ADD_ACCOUNT_COORDS:
 	case DBD_REMOVE_ACCOUNT_COORDS:
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	case DBD_ACTIVATE_ACCOUNT_COORDS:
+	case DBD_DEACTIVATE_ACCOUNT_COORDS:
+#endif
 		rc = _unpack_acct_coord_msg(
 			(dbd_acct_coord_msg_t **)&resp->data,
 			rpc_version, buffer);
@@ -2147,6 +2162,7 @@ extern int unpack_slurmdbd_msg(persist_msg_t *resp, uint16_t rpc_version,
 	case DBD_DEACTIVATE_ACCOUNTS:
 	case DBD_DEACTIVATE_ASSOCS:
 	case DBD_DEACTIVATE_USERS:
+	case DBD_DEACTIVATE_WCKEYS:
 #endif
 	case DBD_ARCHIVE_DUMP:
 		rc = _unpack_cond_msg(

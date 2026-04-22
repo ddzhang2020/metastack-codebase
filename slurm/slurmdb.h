@@ -291,7 +291,7 @@ typedef enum {
 /* Query flags for assoc_cond->with_deleted and user_cond->with_deleted */
 #define SLURMDB_QUERY_WITH_DELETED 1        /* query deleted, deactivated and active associations */
 #define SLURMDB_QUERY_WITH_DEACTIVATED 2    /* query deactivated and active associations */
-#define SLURMDB_QUERY_ONLY_DEACTIVATED 3    /* query deactivatedassociations */
+#define SLURMDB_QUERY_ONLY_DEACTIVATED 3    /* query deactivated associations */
 #endif
 
 /********************************************/
@@ -449,13 +449,14 @@ typedef enum {
 	SLURMDB_ACCT_FLAG_WCOORD = SLURM_BIT(2),
 	SLURMDB_ACCT_FLAG_USER_COORD_NO = SLURM_BIT(3),
 
+	/* Anything above this (0-15) will not be stored in the database. */
+	SLURMDB_ACCT_FLAG_BASE = 0x0000ffff,
+
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 	SLURMDB_ACCT_FLAG_DEACTIVATED = SLURM_BIT(8),  /* This account is deactivated or active. */
 	SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED = SLURM_BIT(9), /* This account is deactivated. */
 #endif
-	
-	/* Anything above this (0-15) will not be stored in the database. */
-	SLURMDB_ACCT_FLAG_BASE = 0x0000ffff,
+
 	SLURMDB_ACCT_FLAG_USER_COORD = SLURM_BIT(16),
 
 	SLURMDB_ACCT_FLAG_INVALID

@@ -5908,6 +5908,7 @@ is_same_user:
 	 * Query activated associations via assoc_cond and 
 	 * generate the update_list for slurmctld. 
 	 */
+	assoc_cond->deleted = 0;
 #ifdef __METASTACK_OPT_LIST_USER
 	local_activate_assoc_list = as_mysql_get_assocs(
 		mysql_conn, uid, assoc_cond, false);
@@ -6254,6 +6255,9 @@ extern int as_mysql_reset_lft_rgt(mysql_conn_t *mysql_conn, uid_t uid,
 	}
 	list_iterator_destroy(itr);
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	xfree(sent_extra);
+#endif
 	xfree(tmp);
 
 	/* if (use_cluster_list == as_mysql_cluster_list) */

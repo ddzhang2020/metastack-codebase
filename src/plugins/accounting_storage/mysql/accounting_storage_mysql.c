@@ -2562,7 +2562,7 @@ extern int remove_common(mysql_conn_t *mysql_conn,
 		 */
 		query = xstrdup_printf(
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-			"select distinct t2.id_assoc from \"%s_%s\" as t2 where %s && t2.deleted=0 || t2.deleted=%d;",
+			"select distinct t2.id_assoc from \"%s_%s\" as t2 where %s && (t2.deleted=0 || t2.deleted=%d);",
 			cluster_name, assoc_table, assoc_char, SLURMDB_USER_DEACTIVATED);
 #else
 			"select distinct t2.id_assoc from \"%s_%s\" as t2 where %s && t2.deleted=0;",
@@ -3734,19 +3734,6 @@ extern int deactivate_common(mysql_conn_t *mysql_conn,
 				   "update \"%s_%s\" set mod_time=%ld, "
 				   "deleted=%d where deleted=0 && (%s);",
 				   cluster_name, table, now, SLURMDB_USER_DEACTIVATED, name_char);
-		} else if (table == federation_table) {
-			xstrfmtcat(query,
-				   "update %s set "
-				   "mod_time=%ld, deleted=%d, "
-				   "where deleted=0 && (%s);",
-				   federation_table, now, SLURMDB_USER_DEACTIVATED,
-				   name_char);
-		} else if (table == qos_table) {
-			xstrfmtcat(query,
-				   "update %s set "
-				   "mod_time=%ld, deleted=%d, "
-				   "where deleted=0 && (%s);",
-				   qos_table, now, SLURMDB_USER_DEACTIVATED, name_char);
 		} else {
 			xstrfmtcat(query,
 				   "update %s set mod_time=%ld, deleted=%d "

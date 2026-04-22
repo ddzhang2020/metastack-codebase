@@ -219,8 +219,8 @@ static int _set_cond(int *start, int argc, char **argv,
 				fprintf(stderr, "warning: 'WithDeleted' provides more visibility than 'OnlyDeactivated', ignoring the latter.\n");
 			}
 #endif
-			user_cond->with_deleted = SLURMDB_QUERY_WITH_DELETED;
-			assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DELETED;
+			user_cond->with_deleted = 1;
+			assoc_cond->with_deleted = 1;
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 		} else if (!end &&
 			   !xstrncasecmp(argv[i], "WithDeactivated",

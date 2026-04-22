@@ -56,9 +56,24 @@ extern List as_kingbase_modify_users(kingbase_conn_t *kingbase_conn, uint32_t ui
 			       slurmdb_user_rec_t *user);
 
 extern List as_kingbase_remove_users(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				  bool is_deactivate,
+#endif
 			       slurmdb_user_cond_t *user_cond);
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_kingbase_activate_users(kingbase_conn_t *kingbase_conn, uint32_t uid,
+			       slurmdb_user_cond_t *user_cond,
+			       slurmdb_user_rec_t *user);
+
+extern List as_kingbase_activate_coord(kingbase_conn_t *kingbase_conn, uint32_t uid,
+			       List acct_list, slurmdb_user_cond_t *user_cond);
+#endif
+
 extern List as_kingbase_remove_coord(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+			       bool is_deactivate,
+#endif
 			       List acct_list, slurmdb_user_cond_t *user_cond);
 
 extern List as_kingbase_get_users(kingbase_conn_t *kingbase_conn, uid_t uid,

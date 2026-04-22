@@ -84,7 +84,7 @@ extern List slurmdb_users_activate(void *db_conn,
 	if (db_api_uid == -1)
 		db_api_uid = getuid();
 
-	return acct_storage_g_activate_users(db_conn, db_api_uid,
+	return acct_storage_g_modify_users(db_conn, db_api_uid, true,
 					   user_cond, user);
 }
 
@@ -133,8 +133,13 @@ extern List slurmdb_users_modify(void *db_conn,
 	if (db_api_uid == -1)
 		db_api_uid = getuid();
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	return acct_storage_g_modify_users(db_conn, db_api_uid, false,
+					   user_cond, user);
+#else
 	return acct_storage_g_modify_users(db_conn, db_api_uid,
 					   user_cond, user);
+#endif
 }
 
 /*

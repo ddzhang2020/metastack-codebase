@@ -165,6 +165,28 @@ extern int remove_common(kingbase_conn_t *kingbase_conn,
 			 bool *jobs_running,
 			 bool *default_account);
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern int activate_common(kingbase_conn_t *kingbase_conn,
+			 uint16_t type,
+			 time_t now,
+			 char *user_name,
+			 char *table,
+			 char *cond_char,
+			 char *vals,
+			 char *cluster_name);
+extern int deactivate_common(kingbase_conn_t *kingbase_conn,
+			 uint16_t type,
+			 time_t now,
+			 char *user_name,
+			 char *table,
+			 char *name_char,
+			 char *assoc_char,
+			 char *cluster_name,
+			 List ret_list,
+			 bool *jobs_running,
+			 bool *default_account);
+#endif
+
 extern void mod_tres_str(char **out, char *mod, char *cur,
 			 char *cur_par, char *name, char **vals,
 			 uint32_t id, bool assoc);

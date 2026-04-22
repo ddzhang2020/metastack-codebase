@@ -336,6 +336,39 @@ static int _foreach_add_acct(void *x, void *arg)
 	char *query = NULL;
 	slurmdb_acct_flags_t base_flags;
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	int deleted_val = 0;
+	/* Check the account is deactivated */
+	query = xstrdup_printf("select deleted from %s where name='%s'", acct_table, name);
+	result = kingbase_db_query_ret(add_acct_cond->kingbase_conn, query, 0);
+	xfree(query);
+	if (!result)
+		return -1;
+
+	cnt = KCIResultGetRowCount(result);
+
+	if (cnt) {
+		deleted_val = slurm_atoul(KCIResultGetColumnValue(result, 0, 0));
+		KCIResultDealloc(result);
+		if (deleted_val == 0) {
+			if (!add_acct_cond->ret_str)
+				xstrcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
+					" Adding Account(s)\n");
+			xstrfmtcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
+					"  Account '%s' exists and is active\n", name);
+			return 0;
+		} else if (deleted_val == SLURMDB_USER_DEACTIVATED) {
+			if (!add_acct_cond->ret_str)
+				xstrcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
+					" Adding Account(s)\n");
+			xstrfmtcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
+					"  Account '%s' exists but is deactivated. Please activate it.\n", name);
+			return 0;
+		} 
+	} else {
+		KCIResultDealloc(result);
+	}
+#else
 	/* Check to see if it is already in the acct_table */
 	query = xstrdup_printf("select name from %s where name='%s' and !deleted",
 			       acct_table, name);
@@ -350,6 +383,7 @@ static int _foreach_add_acct(void *x, void *arg)
 	/* If so, just return */
 	if (cnt)
 		return 0;
+#endif
 
 	/* Else, add it */
 	acct = add_acct_cond->acct_in;
@@ -372,7 +406,11 @@ static int _foreach_add_acct(void *x, void *arg)
 			  " Adding Account(s)\n");
 
 	xstrfmtcatat(add_acct_cond->ret_str, &add_acct_cond->ret_str_pos,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		     "  Add Account '%s'\n", name);
+#else
 		     "  %s\n", name);
+#endif
 
 	if (add_acct_cond->insert_query)
 		xstrfmtcatat(add_acct_cond->insert_query,
@@ -844,6 +882,9 @@ extern List as_kingbase_modify_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 }
 
 extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+				  bool is_deactivate,
+#endif
 				  slurmdb_account_cond_t *acct_cond)
 {
 	list_itr_t *itr = NULL;
@@ -874,7 +915,15 @@ extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 		return NULL;
 	}
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_deactivate) {
+		xstrcatat(extra, &at, "where deleted=0");
+	} else {
+		xstrfmtcatat(extra, &at, "where (deleted=0 or deleted=%d)", SLURMDB_USER_DEACTIVATED);
+	}
+#else
 	xstrcatat(extra, &at, "where deleted=0");
+#endif
 
 #ifdef __METASTACK_OPT_LIST_USER
 	bool list_all = false;
@@ -884,7 +933,11 @@ extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 #endif
 
 	if (!extra) {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		error("Nothing to %s", is_deactivate ? "deactivate" : "remove");
+#else
 		error("Nothing to remove");
+#endif
 		return NULL;
 	}
 
@@ -934,7 +987,11 @@ extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 
 	/* We need to remove these accounts from the coord's that have it */
 	coord_list = as_kingbase_remove_coord(
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		kingbase_conn, uid, is_deactivate, ret_list, NULL);
+#else
 		kingbase_conn, uid, ret_list, NULL);
+#endif
 	FREE_NULL_LIST(coord_list);
 
 	user_name = uid_to_string((uid_t) uid);
@@ -949,10 +1006,23 @@ extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 			slurm_mutex_lock(&assoc_lock);
 		}
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		if (is_deactivate)
+			rc = deactivate_common(kingbase_conn, DBD_DEACTIVATE_ACCOUNTS, now,
+						user_name, acct_table, name_char,
+						assoc_char, object, ret_list,
+						&jobs_running, &default_account);
+		else
+			rc = remove_common(kingbase_conn, DBD_REMOVE_ACCOUNTS, now,
+						user_name, acct_table, name_char,
+						assoc_char, object, ret_list,
+						&jobs_running, &default_account);
+#else
 		rc = remove_common(kingbase_conn, DBD_REMOVE_ACCOUNTS, now,
 					user_name, acct_table, name_char,
 					assoc_char, object, ret_list,
 					&jobs_running, &default_account);
+#endif
 
 		if (rpc_version < SLURM_23_11_PROTOCOL_VERSION) {
 			slurm_mutex_unlock(&assoc_lock);
@@ -990,6 +1060,135 @@ extern List as_kingbase_remove_accts(kingbase_conn_t *kingbase_conn, uint32_t ui
 	return ret_list;
 }
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+extern List as_kingbase_activate_accts(kingbase_conn_t *kingbase_conn, uint32_t uid,
+				  slurmdb_account_cond_t *acct_cond,
+				  slurmdb_account_rec_t *acct)
+{
+	List ret_list = NULL;
+	int rc = SLURM_SUCCESS;
+	char *object = NULL, *at = NULL;
+	char *vals = NULL, *extra = NULL, *query = NULL, *name_char = NULL;
+	time_t now = time(NULL);
+	char *user_name = NULL;
+	slurmdb_assoc_flags_t assoc_flags = ASSOC_FLAG_NONE;
+	KCIResult *result = NULL;
+
+	if (!acct_cond || !acct) {
+		error("we need something to change");
+		return NULL;
+	}
+
+	if (check_connection(kingbase_conn) != SLURM_SUCCESS)
+		return NULL;
+
+	if (!is_user_min_admin_level(kingbase_conn, uid, SLURMDB_ADMIN_OPERATOR)) {
+		errno = ESLURM_ACCESS_DENIED;
+		return NULL;
+	}
+
+	xstrfmtcatat(extra, &at, "where deleted=%d", SLURMDB_USER_DEACTIVATED);
+#ifdef __METASTACK_OPT_LIST_USER
+	bool list_all = false;
+	_setup_acct_cond_limits(acct_cond, &extra, &at, &list_all);
+#else
+	_setup_acct_cond_limits(acct_cond, &extra, &at);
+#endif
+
+	xstrcat(vals, ", deleted=0");
+	if (acct->description)
+		xstrfmtcat(vals, ", description='%s'", acct->description);
+	if (acct->organization)
+		xstrfmtcat(vals, ", organization='%s'", acct->organization);
+
+	if (acct->flags & SLURMDB_ACCT_FLAG_USER_COORD_NO) {
+		xstrfmtcat(vals, ", flags=flags&~%u",
+			   SLURMDB_ACCT_FLAG_USER_COORD);
+		assoc_flags |= ASSOC_FLAG_USER_COORD_NO;
+	} else if (acct->flags & SLURMDB_ACCT_FLAG_USER_COORD) {
+		xstrfmtcat(vals, ", flags=flags|%u",
+			   SLURMDB_ACCT_FLAG_USER_COORD);
+		assoc_flags |= ASSOC_FLAG_USER_COORD;
+	}
+
+	if (!extra || !vals) {
+		errno = SLURM_NO_CHANGE_IN_DATA;
+		error("Nothing to change");
+		return NULL;
+	}
+
+	query = xstrdup_printf("select name from %s %s;", acct_table, extra);
+	xfree(extra);
+	DB_DEBUG(DB_ASSOC, kingbase_conn->conn, "query\n%s", query);
+	//info("[query] line %d, %s: query: %s", __LINE__, __func__, query);
+	result = kingbase_db_query_ret(kingbase_conn, query, 0);
+	if (KCIResultGetStatusCode(result) != EXECUTE_TUPLES_OK) {
+		KCIResultDealloc(result);
+		xfree(query);
+		xfree(vals);
+		return NULL;
+	}
+
+	rc = 0;
+	ret_list = list_create(xfree_ptr);
+
+	int row = KCIResultGetRowCount(result); // 获取结果集行数
+	int i = 0;
+	for(i = 0 ; i < row ; i++){
+		object = xstrdup(KCIResultGetColumnValue(result, i, 0));
+		list_append(ret_list, object);
+		if (!rc) {
+			xstrfmtcat(name_char, "(name='%s'", object);
+			rc = 1;
+		} else  {
+			xstrfmtcat(name_char, " or name='%s'", object);
+		}
+	}
+
+	KCIResultDealloc(result);
+
+	if (!list_count(ret_list)) {
+		errno = SLURM_NO_CHANGE_IN_DATA;
+		DB_DEBUG(DB_ASSOC, kingbase_conn->conn,
+		         "didn't affect anything\n%s", query);
+		//error("[query] line %d, %s: didn't affect anything\nquery: %s", __LINE__, __func__, query);		 
+		xfree(query);
+		xfree(vals);
+		return ret_list;
+	}
+	xfree(query);
+	xstrcat(name_char, ")");
+
+	user_name = uid_to_string((uid_t) uid);
+	rc = activate_common(kingbase_conn, DBD_ACTIVATE_ACCOUNTS, now,
+			   user_name, acct_table, name_char, vals, NULL);
+	xfree(user_name);
+	if (rc == SLURM_ERROR) {
+		error("Couldn't activate accounts");
+		FREE_NULL_LIST(ret_list);
+		errno = SLURM_ERROR;
+		ret_list = NULL;
+	}
+
+	xfree(name_char);
+	xfree(vals);
+
+	if (ret_list &&
+	    (assoc_flags &
+	     (ASSOC_FLAG_USER_COORD_NO | ASSOC_FLAG_USER_COORD))) {
+		flag_coord_acct_t flag_coord_acct = {
+			.acct_list = ret_list,
+			.flags = assoc_flags,
+			.kingbase_conn = kingbase_conn,
+		};
+
+		/* Update associations based on account flags */
+		_handle_flag_coord(&flag_coord_acct);
+	}
+
+	return ret_list;
+}
+#endif
 
 extern List as_kingbase_get_accts(kingbase_conn_t *kingbase_conn, uid_t uid,
 			       slurmdb_account_cond_t *acct_cond)
@@ -1055,7 +1254,15 @@ extern List as_kingbase_get_accts(kingbase_conn_t *kingbase_conn, uid_t uid,
 	}
 
 	if (acct_cond->flags & SLURMDB_ACCT_FLAG_DELETED)
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		xstrfmtcatat(extra, &at, "where (deleted=0 or deleted=1 or deleted=%d)", SLURMDB_USER_DEACTIVATED);
+	else if (acct_cond->flags & SLURMDB_ACCT_FLAG_DEACTIVATED)
+		xstrfmtcatat(extra, &at, "where (deleted=0 or deleted=%d)", SLURMDB_USER_DEACTIVATED);
+	else if (acct_cond->flags & SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED)
+		xstrfmtcatat(extra, &at, "where deleted=%d", SLURMDB_USER_DEACTIVATED);
+#else
 		xstrcatat(extra, &at, "where (deleted=0 or deleted=1)");
+#endif
 	else
 		xstrcatat(extra, &at, "where deleted=0");
 
@@ -1122,6 +1329,12 @@ empty:
 		acct_cond->assoc_cond->acct_list = list_create(NULL);
 		if (acct_cond->flags & SLURMDB_ACCT_FLAG_DELETED)
 			acct_cond->assoc_cond->with_deleted = 1;
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		else if (acct_cond->flags & SLURMDB_ACCT_FLAG_DEACTIVATED)
+			acct_cond->assoc_cond->with_deleted = SLURMDB_QUERY_WITH_DEACTIVATED;
+		else if (acct_cond->flags & SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED)
+			acct_cond->assoc_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
+#endif
 	}
 
 	int row = KCIResultGetRowCount(result); // 获取结果集行数
@@ -1135,8 +1348,15 @@ empty:
 		acct->organization = xstrdup(KCIResultGetColumnValue(result, i, SLURMDB_REQ_ORG));
 		acct->flags = slurm_atoul(KCIResultGetColumnValue(result, i, SLURMDB_REQ_FLAGS));
 
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+		if (slurm_atoul(KCIResultGetColumnValue(result, i, SLURMDB_REQ_DELETED)) == 1)
+			acct->flags |= SLURMDB_ACCT_FLAG_DELETED;
+		else if (slurm_atoul(KCIResultGetColumnValue(result, i, SLURMDB_REQ_DELETED)) == SLURMDB_USER_DEACTIVATED)
+			acct->flags |= SLURMDB_ACCT_FLAG_DEACTIVATED;
+#else
 		if (slurm_atoul(KCIResultGetColumnValue(result, i, SLURMDB_REQ_DELETED)))
 			acct->flags |= SLURMDB_ACCT_FLAG_DELETED;
+#endif
 
 		if (acct_cond && (acct_cond->flags & SLURMDB_ACCT_FLAG_WCOORD))
 			acct->coordinators =

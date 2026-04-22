@@ -305,6 +305,9 @@ extern int acct_storage_p_add_reservation(void *db_conn,
 }
 
 extern List acct_storage_p_modify_users(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_activate,
+#endif
 					slurmdb_user_cond_t *user_cond,
 					slurmdb_user_rec_t *user)
 {
@@ -312,6 +315,9 @@ extern List acct_storage_p_modify_users(void *db_conn, uint32_t uid,
 }
 
 extern List acct_storage_p_modify_accts(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_activate,
+#endif
 					slurmdb_account_cond_t *acct_cond,
 					slurmdb_account_rec_t *acct)
 {
@@ -327,6 +333,9 @@ extern List acct_storage_p_modify_clusters(void *db_conn, uint32_t uid,
 
 extern List acct_storage_p_modify_assocs(
 	void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	bool is_activate,
+#endif
 	slurmdb_assoc_cond_t *assoc_cond,
 	slurmdb_assoc_rec_t *assoc)
 {
