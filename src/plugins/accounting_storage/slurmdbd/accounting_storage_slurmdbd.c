@@ -1079,6 +1079,9 @@ extern int acct_storage_p_add_reservation(void *db_conn,
 }
 
 extern List acct_storage_p_modify_users(void *db_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_activate,
+#endif
 					slurmdb_user_cond_t *user_cond,
 					slurmdb_user_rec_t *user)
 {

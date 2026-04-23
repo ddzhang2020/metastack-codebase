@@ -4005,27 +4005,6 @@ extern List acct_storage_p_remove_assocs(
 }
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-extern List acct_storage_p_activate_accts(kingbase_conn_t *kingbase_conn, uint32_t uid,
-					slurmdb_account_cond_t *acct_cond,
-					slurmdb_account_rec_t *acct)
-{
-	return as_kingbase_activate_accts(kingbase_conn, uid, acct_cond, acct);
-}
-
-extern List acct_storage_p_activate_users(kingbase_conn_t *kingbase_conn, uint32_t uid,
-					slurmdb_user_cond_t *user_cond,
-					slurmdb_user_rec_t *user)
-{
-	return as_kingbase_activate_users(kingbase_conn, uid, user_cond, user);
-}
-
-extern List acct_storage_p_activate_assocs(
-	kingbase_conn_t *kingbase_conn, uint32_t uid, 
-	slurmdb_assoc_cond_t *assoc_cond,
-	slurmdb_assoc_rec_t *assoc)
-{
-	return as_kingbase_activate_assocs(kingbase_conn, uid, assoc_cond, assoc);
-}
 
 /* Activate deactivated entries and modify info per input parameters.
  */

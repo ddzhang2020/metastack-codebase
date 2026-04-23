@@ -1117,6 +1117,11 @@ extern List as_mysql_activate_accts(mysql_conn_t *mysql_conn, uint32_t uid,
 	xfree(name_char);
 	xfree(vals);
 
+	/* activate the coordinator if it exists */
+	List coord_list = NULL;
+	coord_list = as_mysql_activate_coord(mysql_conn, uid, ret_list, NULL);
+	FREE_NULL_LIST(coord_list);
+
 	if (ret_list &&
 	    (assoc_flags &
 	     (ASSOC_FLAG_USER_COORD_NO | ASSOC_FLAG_USER_COORD))) {
@@ -1298,7 +1303,7 @@ empty:
 		if (slurm_atoul(row[SLURMDB_REQ_DELETED]) == 1)
 			acct->flags |= SLURMDB_ACCT_FLAG_DELETED;
 		else if (slurm_atoul(row[SLURMDB_REQ_DELETED]) == SLURMDB_USER_DEACTIVATED)
-			acct->flags |= SLURMDB_ACCT_FLAG_ONLY_DEACTIVATED;
+			acct->flags |= SLURMDB_ACCT_FLAG_DEACTIVATED;
 #else
 		if (slurm_atoul(row[SLURMDB_REQ_DELETED]))
 			acct->flags |= SLURMDB_ACCT_FLAG_DELETED;

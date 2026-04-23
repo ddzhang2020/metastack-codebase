@@ -1956,7 +1956,7 @@ end_it:
 static int _modify_accounts(slurmdbd_conn_t *slurmdbd_conn, persist_msg_t *msg,
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 			    bool is_activate,
-#ifdef
+#endif
 			    buf_t **out_buffer)
 {
 	dbd_list_msg_t list_msg = { NULL };
@@ -2451,7 +2451,7 @@ is_same_user:
 			rc = SLURM_ERROR;
 		} else if (errno == SLURM_NO_CHANGE_IN_DATA) {
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-			if (is_activate) {
+			if (is_activate)
 				comment = "Request didn't affect anything.\n"
 						"Make sure the user is inactive on the system/cluster.";
 			else 
@@ -3976,7 +3976,7 @@ extern int proc_req(void *conn, persist_msg_t *msg, buf_t **out_buffer)
 	case DBD_ACTIVATE_ACCOUNTS:
 		rc = _modify_accounts(slurmdbd_conn, msg, true, out_buffer);
 		break;
-	case DBD_DEACTIVATE_ACCOUNTS:
+	case DBD_MODIFY_ACCOUNTS:
 		rc = _modify_accounts(slurmdbd_conn, msg, false, out_buffer);
 		break;
 	case DBD_ACTIVATE_ASSOCS:

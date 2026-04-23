@@ -889,22 +889,6 @@ extern int sacctmgr_activate_user(int argc, char **argv)
 		goto end_it;
 	}
 
-	if (user_cond->assoc_cond->acct_list
-		&& list_count(user_cond->assoc_cond->acct_list)) {
-		notice_thread_fini();
-		if (commit_check(
-				" You specified Accounts in your "
-				"request.  Did you mean "
-				"DefaultAccounts?\n")) {
-			if (!user_cond->def_acct_list)
-				user_cond->def_acct_list =
-					list_create(xfree_ptr);
-			list_transfer(user_cond->def_acct_list,
-						user_cond->assoc_cond->acct_list);
-		}
-		notice_thread_init();
-	}
-
 	user_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
 	user_cond->assoc_cond->with_deleted = SLURMDB_QUERY_ONLY_DEACTIVATED;
 
@@ -968,7 +952,8 @@ extern int sacctmgr_activate_user(int argc, char **argv)
 		list_iterator_destroy(itr);
 		set = 1;
 	} else if (ret_list) {
-		printf(" Nothing activated\n");
+		printf(" Nothing activated\n"
+				"Make sure the user is inactive on the system/cluster.");
 		rc = SLURM_ERROR;
 	} else {
 		exit_code=1;
@@ -1258,7 +1243,8 @@ extern int sacctmgr_deactivate_user(int argc, char **argv)
 			slurmdb_connection_commit(db_conn, 0);
 		}
 	} else if (ret_list) {
-		printf(" Nothing deleted\n");
+		printf(" Nothing deactivated\n"
+				"Make sure the user is active on the system/cluster.");
 		rc = SLURM_ERROR;
 	} else {
 		exit_code=1;

@@ -412,7 +412,8 @@ extern int sacctmgr_activate_account(int argc, char **argv)
 		list_iterator_destroy(itr);
 		set = 1;
 	} else if (ret_list) {
-		printf(" Nothing activated\n");
+		printf(" Nothing activated\n"
+				"Make sure the account is inactive on the system/cluster.");
 		rc = SLURM_ERROR;
 	} else if ((errno == ESLURM_INVALID_PARENT_ACCOUNT) &&
 			assoc->parent_acct) {
@@ -586,7 +587,8 @@ extern int sacctmgr_deactivate_account(int argc, char **argv)
 			slurmdb_connection_commit(db_conn, 0);
 		}
 	} else if (ret_list) {
-		printf(" Nothing deactivated\n");
+		printf(" Nothing deactivated\n"
+				"Make sure the account is active on the system/cluster.");
 		rc = SLURM_ERROR;
 	} else {
 		exit_code=1;

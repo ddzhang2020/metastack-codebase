@@ -1188,8 +1188,6 @@ extern List as_mysql_activate_wckeys(mysql_conn_t *mysql_conn,
 	List use_cluster_list = NULL;
 	list_itr_t *itr = NULL;
 	bool locked = false;
-	int set = 0;
-	char *prefix = "t1";
 
 	if (!wckey_cond || !wckey) {
 		error("we need something to activate");

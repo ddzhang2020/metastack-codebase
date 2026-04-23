@@ -74,8 +74,8 @@ sacctmgr [<OPTION>] [<COMMAND>]
   <SPECS> are different for each command entity pair.
        list account       - Clusters=, Descriptions=, Flags=, Format=,
                             Names=, Organizations=, Parents=, WithAssoc,
-                            WithDeleted, WithDeactivated, OnlyDeactivated, WithCoordinators, WithRawQOS,
-                            and WOPLimits
+                            WithDeleted, WithDeactivated, OnlyDeactivated,
+                            WithCoordinators, WithRawQOS, and WOPLimits
        add account        - Clusters=, DefaultQOS=, Description=, Fairshare=,
                             Flags=, GrpTRESMins=, GrpTRES=, GrpJobs=,
                             GrpSubmitJob=, GrpWall=, MaxTRESMins=, MaxTRES=,
@@ -105,8 +105,8 @@ sacctmgr [<OPTION>] [<COMMAND>]
 
        list associations  - Accounts=, Clusters=, Flags=, Format=, ID=,
                             OnlyDefaults, Partitions=, Parent=, Tree, Users=,
-                            WithSubAccounts, WithDeleted, WithDeactivated, OnlyDeactivated, WOLimits,
-                            WOPInfo, and WOPLimits
+                            WithSubAccounts, WithDeleted, WithDeactivated, 
+                            OnlyDeactivated, WOLimits, WOPInfo, and WOPLimits
 
        list cluster       - Classification=, DefaultQOS=, Federation=,
                             Flags=, Format=, Names=, RPC= WithFed and
@@ -186,7 +186,8 @@ sacctmgr [<OPTION>] [<COMMAND>]
        list user          - AdminLevel=, DefaultAccount=,
                             DefaultWCKey=, Format=, Names=,
                             QosLevel=, WithAssoc, WithCoordinators,
-                            WithDeleted, WithDeactivated, OnlyDeactivated, WithRawQOS, and WOPLimits
+                            WithDeleted, WithDeactivated, OnlyDeactivated, 
+                            WithRawQOS, and WOPLimits
        add user           - Accounts=, AdminLevel=, Clusters=, Comment=,
                             DefaultAccount=, DefaultQOS=, DefaultWCKey=,
                             Fairshare=, MaxTRESMins=, MaxTRES=,

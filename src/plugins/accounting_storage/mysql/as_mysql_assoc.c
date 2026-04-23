@@ -5908,7 +5908,7 @@ is_same_user:
 	 * Query activated associations via assoc_cond and 
 	 * generate the update_list for slurmctld. 
 	 */
-	assoc_cond->deleted = 0;
+	assoc_cond->with_deleted = 0;
 #ifdef __METASTACK_OPT_LIST_USER
 	local_activate_assoc_list = as_mysql_get_assocs(
 		mysql_conn, uid, assoc_cond, false);

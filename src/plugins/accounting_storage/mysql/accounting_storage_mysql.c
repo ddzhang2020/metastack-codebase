@@ -3447,17 +3447,37 @@ extern int acct_storage_p_add_reservation(mysql_conn_t *mysql_conn,
 }
 
 extern List acct_storage_p_modify_users(mysql_conn_t *mysql_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_activate,
+#endif
 					slurmdb_user_cond_t *user_cond,
 					slurmdb_user_rec_t *user)
 {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_activate)
+		return as_mysql_activate_users(mysql_conn, uid, user_cond, user);
+	else
+		return as_mysql_modify_users(mysql_conn, uid, user_cond, user);
+#else
 	return as_mysql_modify_users(mysql_conn, uid, user_cond, user);
+#endif
 }
 
 extern List acct_storage_p_modify_accts(mysql_conn_t *mysql_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+					bool is_activate,
+#endif
 					slurmdb_account_cond_t *acct_cond,
 					slurmdb_account_rec_t *acct)
 {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_activate)
+		return as_mysql_activate_accts(mysql_conn, uid, acct_cond, acct);
+	else
+		return as_mysql_modify_accts(mysql_conn, uid, acct_cond, acct);
+#else
 	return as_mysql_modify_accts(mysql_conn, uid, acct_cond, acct);
+#endif
 }
 
 extern List acct_storage_p_modify_clusters(mysql_conn_t *mysql_conn,
@@ -3470,10 +3490,20 @@ extern List acct_storage_p_modify_clusters(mysql_conn_t *mysql_conn,
 
 extern List acct_storage_p_modify_assocs(
 	mysql_conn_t *mysql_conn, uint32_t uid,
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	bool is_activate,
+#endif
 	slurmdb_assoc_cond_t *assoc_cond,
 	slurmdb_assoc_rec_t *assoc)
 {
+#ifdef __METASTACK_OPT_USER_DEACTIVATE
+	if (is_activate)
+		return as_mysql_activate_assocs(mysql_conn, uid, assoc_cond, assoc);
+	else
+		return as_mysql_modify_assocs(mysql_conn, uid, assoc_cond, assoc);
+#else
 	return as_mysql_modify_assocs(mysql_conn, uid, assoc_cond, assoc);
+#endif
 }
 
 extern List acct_storage_p_modify_federations(
@@ -3579,27 +3609,6 @@ extern List acct_storage_p_remove_assocs(
 }
 
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
-extern List acct_storage_p_activate_accts(mysql_conn_t *mysql_conn, uint32_t uid,
-					slurmdb_account_cond_t *acct_cond,
-					slurmdb_account_rec_t *acct)
-{
-	return as_mysql_activate_accts(mysql_conn, uid, acct_cond, acct);
-}
-
-extern List acct_storage_p_activate_users(mysql_conn_t *mysql_conn, uint32_t uid,
-					slurmdb_user_cond_t *user_cond,
-					slurmdb_user_rec_t *user)
-{
-	return as_mysql_activate_users(mysql_conn, uid, user_cond, user);
-}
-
-extern List acct_storage_p_activate_assocs(
-	mysql_conn_t *mysql_conn, uint32_t uid, 
-	slurmdb_assoc_cond_t *assoc_cond,
-	slurmdb_assoc_rec_t *assoc)
-{
-	return as_mysql_activate_assocs(mysql_conn, uid, assoc_cond, assoc);
-}
 
 /* Activate deactivated entries and modify info per input parameters.
  */

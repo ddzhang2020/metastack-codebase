@@ -155,17 +155,6 @@ typedef struct slurm_acct_storage_ops {
 	List (*remove_assocs)      (void *db_conn, uint32_t uid,
 				    slurmdb_assoc_cond_t *assoc_cond);
 #endif
-#ifdef __METASTACK_OPT_USER_DEACTIVATE
-	List (*activate_users)       (void *db_conn, uint32_t uid,
-				    slurmdb_user_cond_t *user_cond,
-				    slurmdb_user_rec_t *user);
-	List (*activate_accts)       (void *db_conn, uint32_t uid,
-				    slurmdb_account_cond_t *acct_cond,
-				    slurmdb_account_rec_t *acct);
-	List (*activate_assocs)      (void *db_conn, uint32_t uid,
-				    slurmdb_assoc_cond_t *assoc_cond,
-				    slurmdb_assoc_rec_t *assoc);			
-#endif
 	List (*remove_federations) (void *db_conn, uint32_t uid,
 				    slurmdb_federation_cond_t *fed_cond);
 	List (*remove_qos)         (void *db_conn, uint32_t uid,
@@ -646,7 +635,7 @@ extern List acct_storage_g_modify_users(void *db_conn, uint32_t uid,
 extern List acct_storage_g_modify_accounts(void *db_conn, uint32_t uid,
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 					   bool is_activate,
-#ifdef
+#endif
 					   slurmdb_account_cond_t *acct_cond,
 					   slurmdb_account_rec_t *acct)
 {
@@ -678,7 +667,7 @@ extern List acct_storage_g_modify_assocs(
 	void *db_conn, uint32_t uid,
 #ifdef __METASTACK_OPT_USER_DEACTIVATE
 	bool is_activate,
-#ifdef
+#endif
 	slurmdb_assoc_cond_t *assoc_cond,
 	slurmdb_assoc_rec_t *assoc)
 {

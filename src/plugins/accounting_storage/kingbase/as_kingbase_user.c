@@ -2228,7 +2228,7 @@ extern List as_kingbase_activate_coord(kingbase_conn_t *kingbase_conn, uint32_t 
 				  List acct_list,
 				  slurmdb_user_cond_t *user_cond)
 {
-	char *query = NULL, *object = NULL, *extra = NULL, *last_user = NULL;
+	char *query = NULL, *object = NULL, *extra = NULL, *vals = NULL; *last_user = NULL;
 	char *user_name = NULL;
 	time_t now = time(NULL);
 	int set = 0, is_admin=0, rc = SLURM_SUCCESS;
@@ -2398,12 +2398,14 @@ extern List as_kingbase_activate_coord(kingbase_conn_t *kingbase_conn, uint32_t 
 	}
 	KCIResultDealloc(result);
 
+	xstrcat(vals, ", deleted=0");
 	user_name = uid_to_string((uid_t) uid);
-	rc = activate_common(kingbase_conn, DBD_ACTIVATE_ACCOUNT_COORDS,
-			   now, user_name, acct_coord_table,
-			   extra, NULL, NULL, NULL, NULL, NULL);
+	rc = activate_common(kingbase_conn, DBD_ACTIVATE_ACCOUNT_COORDS, now,
+				user_name, acct_coord_table, extra,
+				vals, NULL);
 	xfree(user_name);
 	xfree(extra);
+	xfree(vals);
 	if (rc == SLURM_ERROR) {
 		FREE_NULL_LIST(ret_list);
 		FREE_NULL_LIST(user_list);

@@ -1173,6 +1173,12 @@ extern List as_kingbase_activate_accts(kingbase_conn_t *kingbase_conn, uint32_t 
 	xfree(name_char);
 	xfree(vals);
 
+
+	/* activate the coordinator if it exists */
+	List coord_list = NUll;
+	coord_list = as_kingbase_activate_coord(kingbase_conn, uid, ret_list, NULL);
+	FREE_NULL_LIST(coord_list);
+
 	if (ret_list &&
 	    (assoc_flags &
 	     (ASSOC_FLAG_USER_COORD_NO | ASSOC_FLAG_USER_COORD))) {
