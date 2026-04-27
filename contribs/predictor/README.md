@@ -1,0 +1,124 @@
+# 基于metastack-22.05-2.3.0版本的“作业执行时间预测”功能
+
+
+
+## 功能说明
+
+​		基于metastack-24.05-3.0.0版本的“作业执行时间预测”功能，旨在用户提交作业时，为用户预测作业的执行时间。并让带有预测标记的作业，可以按照时间预测值进行回填。且运行时间超过预测值之后不会结束，直到达到作业的硬限制。
+
+​		若作业提交时指定--time-min，则不执行预测功能，即使用户在白名单中。
+
+​		执行预测作业的StartTime,EndTime和TimeMin也会动态变化。首轮EndTime = StartTime + TimeMin，若超出TimeMin但作业未结束，则此轮EndTime和TimeMin加1h，直到EndTime = StartTime + TimeLimit，此时TimeMin变为TimeLimit。
+
+​		本功能当前版本不予用户交互，用户侧无感体验时间预测功能。
+
+​		相较之前版本，作业有了更精确的执行时间，按照时间预测值回填，可以提升回填调度中作业的回填机率，作业可以更早开始运行，从而提高集群整体的资源利用率。
+
+​		注意事项：
+​		1.因为作业超过预测值之后不会结束，所以预测功能与预留功能使用时可能出出现冲突，导致预留不可用，使用时需注意。
+​		2.当前作业运行时间预测功能已支持大多数常规作业场景，暂不支持组作业及通过--signal参数配置信号机制的作业预测。即若作业提交时指定--array或--signal，则不执行预测功能。
+
+
+# 安装部署
+
+###### 			依赖环境安装
+
+​		功能涉及AI回归模型，需前置安装部分依赖库，具体如下：
+
+Python 3.9.19、pandas、numpy、sklearnjoblib、os、sys、argparse、warnings
+
+​		若环境为联网环境，推荐使用Anaconda3安装虚拟环境并安装对应版本依赖库。
+
+​		若环境为离线环境，请正确配置下面配置相关中python 3.9 执行路径。
+
+###### 			时间预测工具安装
+
+​		产品包内有安装脚本install.sh，执行安装脚本安装时间预测工具。
+
+​		若安装路径与默认不一致，请手动更改工具文件中变量路径，确保后续预测工具可正常使用。
+
+# 配置使用
+
+​		slurm.conf配置文件中需配置CliFilterPlugins=cli_filter/lua
+
+​		slurm_partition.conf配置文件中分区需配置DefaultTime
+
+​		安装包中contribs\predictor下有configuration文件，其中包含所有开关及路径的配置项。
+
+​		其中包含配置相关：
+
+###### 			时间预测功能配置相关
+
+​			#预测功能开关
+
+​			predictionFunction=0关闭预测流程
+
+​			predictionFunction=1开启预测流程只适用于白名单用户
+
+​			predictionFunction=2开启预测流程适用全部用户
+
+
+
+​			#预测使用的方法
+
+​			predictionMethod=0 均值法
+
+​			predictionMethod=1 AI随机森林算法
+
+
+
+​			#数据集获取范围,单位为月
+
+​			period=3
+
+
+
+###### 			时间预测工具路径相关
+
+​			注意：请确保以下安装路径正确。路径不对会影响功能的正常使用。
+
+​			#sacct命令路径
+
+​			sacct_cmd=/opt/gridview/slurm/bin/sacct
+
+
+
+​			#slurm/etc 配置路径
+
+​			etc_path=/opt/gridview/slurm/etc
+
+
+
+​			#预测工具路径
+
+​			predictor_path=/opt/gridview/slurm/etc/luaconfig/predictor
+
+
+
+​			#python 3.9 执行路径
+
+​			python_executable=/opt/gridview/slurm/etc/luaconfig/predictor/AIenvironment/CentOS-7.6/envs/AIpredict/bin/python
+
+
+
+​			#AI随机森林工具路径
+
+​			sklearn_path=/opt/gridview/slurm/etc/luaconfig/predictor/prediction_methods/sklearn
+
+
+
+###### 			历史作业更新
+
+​			首次安装需执行updateJobHistory脚本获取历史作业集，及生成对应的AI预测模型。
+
+​			若历史作业集需频繁更新，建议将updateJobHistory脚本放置在系统级crontab定时任务中，作业集和AI预测模型会对应更新。
+
+###### 			关键更新说明
+
+​			1. 安装脚本新增两种模式，适配不同部署场景：
+​			    首次完整部署：执行命令 sh install.sh all，自动创建所有依赖目录并安装全部文件，适用于初次部署；
+​			    后续升级：执行命令 sh install.sh script，仅更新核心功能文件，避免重复安装无关内容，提升部署效率；
+
+​			2. 脚本更新模式（script）聚焦核心依赖更新，执行命令 sh install.sh script 即可触发，不改动目录结构和非核心配置（如 configuration 配置文件、白名单文件、作业历史数据等）；
+
+​			3. 所有更新操作均会自动备份原有文件（备份文件后缀为当前日期，格式：文件名.YYYY-MM-DD），无需手动备份，避免文件覆盖导致的数据丢失。

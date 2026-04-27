@@ -1,0 +1,1156 @@
+/*****************************************************************************\
+ *  event_functions.c - functions dealing with events in the
+ *                        accounting system.
+ *****************************************************************************
+ *  Copyright (C) 2008 Lawrence Livermore National Security.
+ *  Copyright (C) 2002-2007 The Regents of the University of California.
+ *  Produced at Lawrence Livermore National Laboratory (cf, DISCLAIMER).
+ *  Written by Danny Auble <da@llnl.gov>
+ *  CODE-OCEC-09-009. All rights reserved.
+ *
+ *  This file is part of Slurm, a resource management program.
+ *  For details, see <https://slurm.schedmd.com/>.
+ *  Please also read the included file: DISCLAIMER.
+ *
+ *  Slurm is free software; you can redistribute it and/or modify it under
+ *  the terms of the GNU General Public License as published by the Free
+ *  Software Foundation; either version 2 of the License, or (at your option)
+ *  any later version.
+ *
+ *  In addition, as a special exception, the copyright holders give permission
+ *  to link the code of portions of this program with the OpenSSL library under
+ *  certain conditions as described in each individual source file, and
+ *  distribute linked combinations including the two. You must obey the GNU
+ *  General Public License in all respects for all of the code used other than
+ *  OpenSSL. If you modify file(s) with this exception, you may extend this
+ *  exception to your version of the file(s), but you are not obligated to do
+ *  so. If you do not wish to do so, delete this exception statement from your
+ *  version.  If you delete this exception statement from all source files in
+ *  the program, then also delete it here.
+ *
+ *  Slurm is distributed in the hope that it will be useful, but WITHOUT ANY
+ *  WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ *  FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+ *  details.
+ *
+ *  You should have received a copy of the GNU General Public License along
+ *  with Slurm; if not, write to the Free Software Foundation, Inc.,
+ *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301  USA.
+\*****************************************************************************/
+#include <grp.h>
+
+#include "src/common/slurm_time.h"
+#include "src/common/slurmdbd_defs.h"
+#include "src/common/uid.h"
+#include "src/sacctmgr/sacctmgr.h"
+
+#ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
+/* Max borrowaway nodes per single sql statement. */
+#define BORROWAWAY_NODES_PER_PASS 100
+#endif
+
+static uint32_t _decode_node_state(char *val)
+{
+	int vallen;
+
+	xassert(val);
+
+	vallen = strlen(val);
+
+	if (!xstrncasecmp(val, "DRAIN", MAX(vallen, 3)))
+		return NODE_STATE_DRAIN;
+	else if (!xstrncasecmp(val, "FAIL", MAX(vallen, 3)))
+		return NODE_STATE_FAIL;
+	else if (!xstrncasecmp(val, "REBOOT^", MAX(vallen, 7)))
+		return NODE_STATE_REBOOT_ISSUED;
+	else if (!xstrncasecmp(val, "REBOOT", MAX(vallen, 3)))
+		return NODE_STATE_REBOOT_REQUESTED;
+	else {
+		uint32_t j;
+		for (j = 0; j < NODE_STATE_END; j++) {
+			if (xstrncasecmp(node_state_string(j), val,
+					 MAX(vallen, 3)) == 0){
+				return j;
+			}
+		}
+		if (j == NODE_STATE_END) {
+			exit_code = 1;
+			fprintf(stderr, "Invalid state: %s\n", val);
+			fprintf (stderr, "Valid node states are: ");
+			fprintf (stderr, "DRAIN FAIL ");
+			for (j = 0; j < NODE_STATE_END; j++) {
+				fprintf (stderr, "%s ",
+					 node_state_string(j));
+			}
+			fprintf (stderr, "\n");
+		}
+	}
+
+	return NO_VAL;
+}
+
+static int _addto_state_char_list_internal(List char_list, char *name, void *x)
+{
+	uint32_t c;
+	char *tmp_name = NULL;
+
+	c = _decode_node_state(name);
+	if (c == NO_VAL)
+		fatal("unrecognized job state value");
+	tmp_name = xstrdup_printf("%u", c);
+
+	if (!list_find_first(char_list, slurm_find_char_in_list, tmp_name)) {
+		list_append(char_list, tmp_name);
+		return 1;
+	} else {
+		xfree(tmp_name);
+		return 0;
+	}
+}
+
+static int _addto_state_char_list(List char_list, char *names)
+{
+	if (!char_list) {
+		error("No list was given to fill in");
+		return 0;
+	}
+
+	return slurm_parse_char_list(char_list, names, NULL,
+				     _addto_state_char_list_internal);
+}
+
+static uint32_t _parse_cond_flags(const char *flags_str)
+{
+	uint32_t flags = 0;
+	char *tmp_flags, *flag, *save_ptr = NULL;
+
+	tmp_flags = xstrdup(flags_str);
+
+	flag = strtok_r(tmp_flags, ",", &save_ptr);
+	while (flag) {
+		if (!xstrcasecmp(flag, "OPEN")) {
+			flags |= SLURMDB_EVENT_COND_OPEN;
+		} else {
+			error("Unknown condition flag %s", flag);
+			exit_code = 1;
+		}
+
+		flag = strtok_r(NULL, ",", &save_ptr);
+	}
+
+	xfree(tmp_flags);
+
+	return flags;
+}
+
+static int _set_cond(int *start, int argc, char **argv,
+		     slurmdb_event_cond_t *event_cond,
+		     List format_list)
+{
+	int i, end = 0;
+	int set = 0;
+	int command_len = 0;
+	int local_cluster_flag = 0;
+	int all_time_flag = 0;
+
+	if (!event_cond->cluster_list)
+		event_cond->cluster_list = list_create(xfree_ptr);
+	for (i=(*start); i<argc; i++) {
+		end = parse_option_end(argv[i]);
+		if (!end)
+			command_len=strlen(argv[i]);
+		else {
+			command_len=end-1;
+			if (argv[i][end] == '=') {
+				end++;
+			}
+		}
+
+		if (!end && !xstrncasecmp(argv[i], "all_clusters",
+					  MAX(command_len, 5))) {
+			local_cluster_flag = 1;
+		} else if (!end && !xstrncasecmp(argv[i], "all_time",
+						 MAX(command_len, 5))) {
+			all_time_flag = 1;
+		} else if (!end && !xstrncasecmp(argv[i], "where",
+						 MAX(command_len, 5))) {
+			continue;
+		} else if (!end || (!xstrncasecmp(argv[i], "Events",
+						  MAX(command_len, 1)))) {
+			list_itr_t *itr = NULL;
+			List tmp_list = list_create(xfree_ptr);
+			char *temp = NULL;
+
+			if (slurm_addto_char_list(tmp_list,
+						 argv[i]+end))
+				set = 1;
+
+			/* check to make sure user gave ints here */
+			itr = list_iterator_create(tmp_list);
+			while ((temp = list_next(itr))) {
+				if (!xstrncasecmp("Node", temp,
+						  MAX(strlen(temp), 1))) {
+					if (event_cond->event_type)
+						event_cond->event_type =
+							SLURMDB_EVENT_ALL;
+					else
+						event_cond->event_type =
+							SLURMDB_EVENT_NODE;
+				} else if (!xstrncasecmp("Cluster", temp,
+						MAX(strlen(temp), 1))) {
+					if (event_cond->event_type)
+						event_cond->event_type =
+							SLURMDB_EVENT_ALL;
+					else
+						event_cond->event_type =
+							SLURMDB_EVENT_CLUSTER;
+				} else {
+					exit_code=1;
+					fprintf(stderr,
+						" Unknown event type: '%s'  "
+						"Valid events are Cluster "
+						"and Node.\n",
+						temp);
+
+				}
+			}
+			list_iterator_destroy(itr);
+			FREE_NULL_LIST(tmp_list);
+		} else if (!xstrncasecmp(argv[i], "Clusters",
+					 MAX(command_len, 2))) {
+			if (!event_cond->cluster_list)
+				event_cond->cluster_list =
+					list_create(xfree_ptr);
+			if (slurm_addto_char_list(event_cond->cluster_list,
+						 argv[i]+end))
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "CondFlags",
+					 MAX(command_len, 2))) {
+			event_cond->cond_flags = _parse_cond_flags(argv[i]+end);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "End", MAX(command_len, 1))) {
+			event_cond->period_end = parse_time(argv[i]+end, 1);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "Format",
+					 MAX(command_len, 1))) {
+			if (format_list)
+				slurm_addto_char_list(format_list, argv[i]+end);
+		} else if (!xstrncasecmp(argv[i], "MinCpus",
+					 MAX(command_len, 2))) {
+			if (get_uint(argv[i]+end, &event_cond->cpus_min,
+			    "MinCpus") == SLURM_SUCCESS)
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "MaxCpus",
+					 MAX(command_len, 2))) {
+			if (get_uint(argv[i]+end, &event_cond->cpus_max,
+			    "MaxCpus") == SLURM_SUCCESS)
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "Nodes",
+					 MAX(command_len, 1))) {
+			xfree(event_cond->node_list);
+			event_cond->node_list = xstrdup(argv[i]+end);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "Reason",
+					 MAX(command_len, 1))) {
+			if (!event_cond->reason_list)
+				event_cond->reason_list =
+					list_create(xfree_ptr);
+			if (slurm_addto_char_list(event_cond->reason_list,
+						 argv[i]+end))
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "Start",
+					 MAX(command_len, 4))) {
+			event_cond->period_start = parse_time(argv[i]+end, 1);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "States",
+					 MAX(command_len, 4))) {
+			if (!event_cond->state_list)
+				event_cond->state_list = list_create(xfree_ptr);
+			if (_addto_state_char_list(event_cond->state_list,
+						  argv[i]+end) > 0) {
+				event_cond->event_type = SLURMDB_EVENT_NODE;
+				set = 1;
+			}
+		} else if (!xstrncasecmp(argv[i], "User",
+					 MAX(command_len, 1))) {
+			if (!event_cond->reason_uid_list)
+				event_cond->reason_uid_list =
+					list_create(xfree_ptr);
+			if (slurm_addto_id_char_list(
+				event_cond->reason_uid_list,
+				argv[i]+end, 0) > 0) {
+				event_cond->event_type = SLURMDB_EVENT_NODE;
+				set = 1;
+			} else {
+				exit_code=1;
+			}
+		} else {
+			exit_code=1;
+			fprintf(stderr, " Unknown condition: %s\n", argv[i]);
+		}
+	}
+	(*start) = i;
+
+	if (!local_cluster_flag && !list_count(event_cond->cluster_list))
+		list_append(event_cond->cluster_list, xstrdup(slurm_conf.cluster_name));
+
+	if (!all_time_flag && !event_cond->period_start) {
+		event_cond->period_start = time(NULL);
+		if (!event_cond->state_list) {
+			struct tm start_tm;
+
+			if (!localtime_r(&event_cond->period_start,
+					 &start_tm)) {
+				fprintf(stderr,
+					" Couldn't get localtime from %ld",
+					(long)event_cond->period_start);
+				exit_code=1;
+				return 0;
+			}
+			start_tm.tm_sec = 0;
+			start_tm.tm_min = 0;
+			start_tm.tm_hour = 0;
+			start_tm.tm_mday--;
+			event_cond->period_start = slurm_mktime(&start_tm);
+		}
+	}
+
+	return set;
+}
+
+
+extern int sacctmgr_list_event(int argc, char **argv)
+{
+	int rc = SLURM_SUCCESS;
+	slurmdb_event_cond_t *event_cond =
+		xmalloc(sizeof(slurmdb_event_cond_t));
+	List event_list = NULL;
+	slurmdb_event_rec_t *event = NULL;
+	int i = 0;
+	list_itr_t *itr = NULL;
+	list_itr_t *itr2 = NULL;
+	int field_count = 0;
+
+	print_field_t *field = NULL;
+
+	List format_list;
+	List print_fields_list; /* types are of print_field_t */
+
+	/* If we don't have any arguments make sure we set up the
+	   time correctly for just the past day.
+	*/
+	if (argc == 0) {
+		struct tm start_tm;
+		event_cond->period_start = time(NULL);
+
+		if (!localtime_r(&event_cond->period_start, &start_tm)) {
+			fprintf(stderr,
+				" Couldn't get localtime from %ld",
+				(long)event_cond->period_start);
+			exit_code = 1;
+			slurmdb_destroy_event_cond(event_cond);
+			return 0;
+		}
+		start_tm.tm_sec = 0;
+		start_tm.tm_min = 0;
+		start_tm.tm_hour = 0;
+		start_tm.tm_mday--;
+		event_cond->period_start = slurm_mktime(&start_tm);
+	}
+
+	format_list = list_create(xfree_ptr);
+	for (i = 0; i < argc; i++) {
+		int command_len = strlen(argv[i]);
+		if (!xstrncasecmp(argv[i], "Where", MAX(command_len, 5))
+		    || !xstrncasecmp(argv[i], "Set", MAX(command_len, 3)))
+			i++;
+		_set_cond(&i, argc, argv, event_cond, format_list);
+	}
+
+	if (exit_code) {
+		slurmdb_destroy_event_cond(event_cond);
+		FREE_NULL_LIST(format_list);
+		return SLURM_ERROR;
+	}
+
+	if (!list_count(format_list)) {
+		if (event_cond->event_type == SLURMDB_EVENT_CLUSTER)
+			slurm_addto_char_list(format_list,
+					      "Cluster,TRES,Start,End,"
+					      "ClusterNodes");
+		else
+			slurm_addto_char_list(format_list,
+					      "Cluster,NodeName,Start,"
+					      "End,State,Reason,User");
+	}
+
+	print_fields_list = sacctmgr_process_format_list(format_list);
+	FREE_NULL_LIST(format_list);
+
+	if (exit_code) {
+		FREE_NULL_LIST(print_fields_list);
+		return SLURM_ERROR;
+	}
+
+	event_list = slurmdb_events_get(db_conn, event_cond);
+	slurmdb_destroy_event_cond(event_cond);
+
+	if (!event_list) {
+		exit_code=1;
+		fprintf(stderr, " Error with request: %s\n",
+			slurm_strerror(errno));
+		FREE_NULL_LIST(print_fields_list);
+		return SLURM_ERROR;
+	}
+	itr = list_iterator_create(event_list);
+	itr2 = list_iterator_create(print_fields_list);
+	print_fields_header(print_fields_list);
+
+	field_count = list_count(print_fields_list);
+
+	while((event = list_next(itr))) {
+		int curr_inx = 1;
+		char tmp[20], *tmp_char;
+		uint64_t tmp_uint64;
+		time_t newend = event->period_end;
+
+		while((field = list_next(itr2))) {
+			switch(field->type) {
+			case PRINT_CLUSTER:
+				field->print_routine(field, event->cluster,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_CLUSTER_NODES:
+				field->print_routine(
+					field,
+					event->cluster_nodes,
+					(curr_inx == field_count));
+				break;
+			case PRINT_CPUS:
+				convert_num_unit(
+					(float)slurmdb_find_tres_count_in_string(
+						event->tres_str, TRES_CPU),
+					tmp, sizeof(tmp), UNIT_NONE, NO_VAL,
+					CONVERT_NUM_UNIT_EXACT);
+
+				field->print_routine(
+					field,
+					tmp,
+					(curr_inx == field_count));
+				break;
+			case PRINT_DURATION:
+				if (!newend)
+					newend = time(NULL);
+				tmp_uint64 = newend - event->period_start;
+				field->print_routine(
+					field,
+					&tmp_uint64,
+					(curr_inx == field_count));
+				break;
+			case PRINT_TIMEEND:
+				field->print_routine(field,
+						     &event->period_end,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_EVENTRAW:
+				field->print_routine(field, &event->event_type,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_EVENT:
+				if (event->event_type == SLURMDB_EVENT_CLUSTER)
+					tmp_char = "Cluster";
+				else if (event->event_type ==
+					 SLURMDB_EVENT_NODE)
+					tmp_char = "Node";
+				else
+					tmp_char = "Unknown";
+				field->print_routine(field,
+						     tmp_char,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_NODENAME:
+				field->print_routine(field,
+						     event->node_name,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_TIMESTART:
+				field->print_routine(field,
+						     &event->period_start,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_REASON:
+				field->print_routine(field, event->reason,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATERAW:
+				field->print_routine(field, &event->state,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATE:
+				if (event->event_type == SLURMDB_EVENT_CLUSTER)
+					tmp_char = NULL;
+				else
+					tmp_char = node_state_string_compact(
+						event->state);
+
+				field->print_routine(field,
+						     tmp_char,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_TRES:
+				sacctmgr_initialize_g_tres_list();
+
+				tmp_char = slurmdb_make_tres_string_from_simple(
+					event->tres_str, g_tres_list, NO_VAL,
+					CONVERT_NUM_UNIT_EXACT, 0, NULL);
+
+				field->print_routine(
+					field,
+					tmp_char,
+					(curr_inx == field_count));
+				xfree(tmp_char);
+				break;
+			case PRINT_USER:
+				if (event->reason_uid != NO_VAL) {
+					tmp_char = xstrdup_printf(
+						"%s(%u)",
+						uid_to_string_cached(
+							event->reason_uid),
+						event->reason_uid);
+				} else
+					tmp_char = NULL;
+				field->print_routine(field, tmp_char,
+						     (curr_inx == field_count));
+				xfree(tmp_char);
+				break;
+			default:
+				field->print_routine(field, NULL,
+						     (curr_inx == field_count));
+					break;
+			}
+			curr_inx++;
+		}
+		list_iterator_reset(itr2);
+		printf("\n");
+	}
+
+	list_iterator_destroy(itr2);
+	list_iterator_destroy(itr);
+	FREE_NULL_LIST(event_list);
+	FREE_NULL_LIST(print_fields_list);
+	return rc;
+}
+
+#ifdef __METASTACK_NEW_AUTO_SUPPLEMENT_AVAIL_NODES
+static int _set_borrow_cond(int *start, int argc, char **argv,
+		     slurmdb_borrow_cond_t *borrow_cond,
+		     List format_list)
+{
+	int i, end = 0;
+	int set = 0;
+	int command_len = 0;
+	int local_cluster_flag = 0;
+	int all_time_flag = 0;
+
+	if (!borrow_cond->cluster_list) {
+		borrow_cond->cluster_list = list_create(xfree_ptr);
+	}
+
+	for (i=(*start); i<argc; i++) {
+		end = parse_option_end(argv[i]);
+		if (!end) {
+			command_len=strlen(argv[i]);
+		} else {
+			command_len=end-1;
+			if (argv[i][end] == '=') {
+				end++;
+			}
+		}
+
+		if (!end && !xstrncasecmp(argv[i], "all_clusters",
+					  MAX(command_len, 5))) {
+			local_cluster_flag = 1;
+		} else if (!end && !xstrncasecmp(argv[i], "all_time",
+						 MAX(command_len, 5))) {
+			all_time_flag = 1;
+		} else if (!end && !xstrncasecmp(argv[i], "where",
+						 MAX(command_len, 5))) {
+			continue;
+		} else if (!xstrncasecmp(argv[i], "Clusters",
+					 MAX(command_len, 2))) {
+			if (!borrow_cond->cluster_list)
+				borrow_cond->cluster_list =
+					list_create(xfree_ptr);
+			if (slurm_addto_char_list(borrow_cond->cluster_list,
+						 argv[i]+end))
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "CondFlags",
+					 MAX(command_len, 2))) {
+			borrow_cond->cond_flags = _parse_cond_flags(argv[i]+end);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "End", MAX(command_len, 1))) {
+			borrow_cond->period_end = parse_time(argv[i]+end, 1);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "Format",
+					 MAX(command_len, 1))) {
+			if (format_list)
+				slurm_addto_char_list(format_list, argv[i]+end);
+		} else if (!xstrncasecmp(argv[i], "Nodes",
+					 MAX(command_len, 1))) {
+			xfree(borrow_cond->node_list);
+			borrow_cond->node_list = xstrdup(argv[i]+end);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "Reason",
+					 MAX(command_len, 1))) {
+			if (!borrow_cond->reason_list)
+				borrow_cond->reason_list =
+					list_create(xfree_ptr);
+			if (slurm_addto_char_list(borrow_cond->reason_list,
+						 argv[i]+end))
+				set = 1;
+		} else if (!xstrncasecmp(argv[i], "Start",
+					 MAX(command_len, 4))) {
+			borrow_cond->period_start = parse_time(argv[i]+end, 1);
+			set = 1;
+		} else if (!xstrncasecmp(argv[i], "States",
+					 MAX(command_len, 4))) {
+			if (!borrow_cond->state_list)
+				borrow_cond->state_list = list_create(xfree_ptr);
+			if (_addto_state_char_list(borrow_cond->state_list,
+						  argv[i]+end) > 0) {
+				set = 1;
+			}
+		} else if (!xstrncasecmp(argv[i], "User",
+					 MAX(command_len, 1))) {
+			if (!borrow_cond->reason_uid_list)
+				borrow_cond->reason_uid_list =
+					list_create(xfree_ptr);
+		} else {
+			exit_code=1;
+			fprintf(stderr, " Unknown condition: %s\n", argv[i]);
+		}
+	}
+	(*start) = i;
+
+	if (!local_cluster_flag && !list_count(borrow_cond->cluster_list)) {
+		list_append(borrow_cond->cluster_list, xstrdup(slurm_conf.cluster_name));
+	}
+
+	if (!all_time_flag && !borrow_cond->period_start) {
+		borrow_cond->period_start = time(NULL);
+		if (!borrow_cond->state_list) {
+			struct tm start_tm;
+
+			if (!localtime_r(&borrow_cond->period_start,
+					 &start_tm)) {
+				fprintf(stderr,
+					" Couldn't get localtime from %ld",
+					(long)borrow_cond->period_start);
+				exit_code=1;
+				return 0;
+			}
+			start_tm.tm_sec = 0;
+			start_tm.tm_min = 0;
+			start_tm.tm_hour = 0;
+			start_tm.tm_mday--;
+			borrow_cond->period_start = slurm_mktime(&start_tm);
+		}
+	}
+
+	return set;
+}
+
+/*
+ * Fix borrowaway nodes
+ * IN: nodes, a list of all the borrowaway jobs
+ * RET: SLURM_SUCCESS on success SLURM_ERROR else
+ */
+extern int slurmdb_nodes_fix_borrowaway(void *db_conn, List nodes)
+{
+	if (db_api_uid == -1)
+		db_api_uid = getuid();
+
+	return acct_storage_g_fix_borrowaway_nodes(db_conn, db_api_uid, nodes);
+}
+
+/*
+ * Remove borrowed nodes from borrow away list if it is a currently known borrow nodes to slurmctld.
+ */
+static int _purge_known_borrowed_nodes(void *x, void *key)
+{
+	partition_info_msg_t *clus_parts = (partition_info_msg_t *) key;
+	slurmdb_borrow_rec_t *borrow = (slurmdb_borrow_rec_t *) x;
+	hostlist_t *host_list = NULL;
+	char *borrowed_node = NULL;
+	
+	if (clus_parts && clus_parts->record_count > 0) {
+		partition_info_t *clus_part  = clus_parts->partition_array;
+
+		for (int i = 0; i < clus_parts->record_count; i++, clus_part++) {
+			if (!clus_part || !clus_part->borrowed_nodes ||
+			    !clus_part->borrowed_nodes[0]) {
+				continue;
+			}
+
+			if ((host_list = slurm_hostlist_create(clus_part->borrowed_nodes)) == NULL) {
+				error ("%s: hostlist_create error: %m", __func__);
+				continue;
+			}
+
+			while ((borrowed_node = hostlist_shift(host_list))) {
+				if (xstrcmp(borrowed_node, borrow->node_name) == 0) {
+					debug3("%s: matched known borrowed node: %s",
+					       __func__, borrowed_node);
+					FREE_NULL_HOSTLIST(host_list);
+					free(borrowed_node);
+					return true;
+				}
+				free(borrowed_node);
+			}
+			FREE_NULL_HOSTLIST(host_list);
+		}
+	}
+
+	return false;
+}
+
+static List _get_borrowaway_nodes(void *db_conn, slurmdb_borrow_cond_t *borrow_cond)
+{
+	List db_borrow_node_list = NULL;
+	partition_info_msg_t *clus_partitions = NULL;
+	slurmdb_cluster_cond_t cluster_cond;
+	List cluster_list = NULL;
+
+	if (!borrow_cond->cluster_list || !list_count(borrow_cond->cluster_list)) {
+		if (!borrow_cond->cluster_list)
+			borrow_cond->cluster_list = list_create(xfree_ptr);
+		slurm_addto_char_list(borrow_cond->cluster_list,
+				      slurm_conf.cluster_name);
+	}
+
+	if (list_count(borrow_cond->cluster_list) != 1) {
+		error("You can only fix borrowaway nodes on "
+		      "one cluster at a time.");
+		return NULL;
+	}
+
+	db_borrow_node_list = slurmdb_borrow_get(db_conn, borrow_cond);
+
+	if (!db_borrow_node_list) {
+		if (errno != ESLURM_ACCESS_DENIED)
+			error("No borrow node list returned");
+		goto cleanup;
+	} else if (!list_count(db_borrow_node_list))
+		return db_borrow_node_list; /* Just return now since we don't
+				      * have any run away jobs, no
+				      * reason to check the cluster.
+				      */
+	slurmdb_init_cluster_cond(&cluster_cond, 0);
+	cluster_cond.cluster_list = borrow_cond->cluster_list;
+	cluster_list = slurmdb_clusters_get(db_conn,
+					    &cluster_cond);
+	if (!cluster_list) {
+		error("No cluster list returned.");
+		goto cleanup;
+	} else if (!list_count(cluster_list)) {
+		error("Cluster %s is unknown",
+		      (char *)list_peek(cluster_cond.cluster_list));
+		goto cleanup;
+	} else if (list_count(cluster_list) != 1) {
+		error("slurmdb_clusters_get didn't return exactly one cluster (%d)!  This should never happen.",
+		      list_count(cluster_list));
+		goto cleanup;
+	}
+
+	working_cluster_rec = list_peek(cluster_list);
+	if (!working_cluster_rec->control_host ||
+	    working_cluster_rec->control_host[0] == '\0' ||
+	    !working_cluster_rec->control_port) {
+		error("Slurmctld running on cluster %s is not up, can't check borrowaway nodes",
+		      working_cluster_rec->name);
+		goto cleanup;
+	}
+	if (slurm_load_partitions((time_t)NULL, &clus_partitions, SHOW_ALL)) {
+		error("Failed to get partitions from requested clusters: %m");
+		goto cleanup;
+	}
+
+	list_delete_all(db_borrow_node_list, _purge_known_borrowed_nodes, clus_partitions);
+
+	return db_borrow_node_list;
+
+cleanup:
+	FREE_NULL_LIST(db_borrow_node_list);
+	FREE_NULL_LIST(cluster_list);
+
+	return NULL;
+}
+
+/*
+ * List and ask user if they wish to fix the borrowaway nodes
+ */
+extern int sacctmgr_list_borrowaway_nodes(int argc, char **argv)
+{
+	int rc = SLURM_SUCCESS;
+	List borrowaway_nodes = NULL, process_nodes = NULL;
+	list_itr_t *itr = NULL;
+	list_itr_t *itr2 = NULL;
+	int field_count = 0;
+	char *cluster_str = NULL;
+	slurmdb_borrow_rec_t *borrow = NULL;
+
+	slurmdb_borrow_cond_t *borrow_cond =
+		xmalloc(sizeof(slurmdb_borrow_cond_t));
+
+	char *ask_msg = "\nWould you like to fix these borrowaway nodes?\n"
+			"(This will set the end time for all node borrowing records "
+			"that are no longer in the borrowed state to their respective "
+			"start_time.)\n\n";
+
+	int i = 0;
+
+	print_field_t *field = NULL;
+
+	List format_list = NULL;
+	List print_fields_list = NULL; /* types are of print_field_t */
+
+	/* If we don't have any arguments make sure we set up the
+	   time correctly for just the past day.
+	*/
+	if (argc == 0) {
+		struct tm start_tm;
+		borrow_cond->period_start = time(NULL);
+
+		if (!localtime_r(&borrow_cond->period_start, &start_tm)) {
+			fprintf(stderr,
+				" Couldn't get localtime from %ld",
+				(long)borrow_cond->period_start);
+			exit_code = 1;
+			slurmdb_destroy_borrow_cond(borrow_cond);
+			return 0;
+		}
+		start_tm.tm_sec = 0;
+		start_tm.tm_min = 0;
+		start_tm.tm_hour = 0;
+		start_tm.tm_mday--;
+		borrow_cond->period_start = slurm_mktime(&start_tm);
+	}
+	borrow_cond->cond_flags |= SLURMDB_EVENT_COND_OPEN;
+	
+
+	format_list = list_create(xfree_ptr);
+	for (i = 0; i < argc; i++) {
+		int command_len = strlen(argv[i]);
+		if (!xstrncasecmp(argv[i], "Where", MAX(command_len, 5))
+		    || !xstrncasecmp(argv[i], "Set", MAX(command_len, 3)))
+			i++;
+		_set_borrow_cond(&i, argc, argv, borrow_cond, format_list);
+	}
+
+	if (exit_code) {
+		slurmdb_destroy_borrow_cond(borrow_cond);
+		FREE_NULL_LIST(format_list);
+		return SLURM_ERROR;
+	}
+
+
+	borrowaway_nodes = _get_borrowaway_nodes(db_conn, borrow_cond);
+	cluster_str = xstrdup(list_peek(borrow_cond->cluster_list));
+	slurmdb_destroy_borrow_cond(borrow_cond);
+
+	if (!borrowaway_nodes) {
+		rc = SLURM_ERROR;
+		goto end_it;
+	}
+
+	if (!list_count(borrowaway_nodes)) {
+		printf("Borrowaway Nodes: No borrowaway nodes found on cluster %s\n",
+		       cluster_str);
+		rc = SLURM_SUCCESS;
+		goto end_it;
+	}
+
+	if (!list_count(format_list)) {
+		slurm_addto_char_list(format_list,
+						"Cluster,NodeName,Start,"
+						"End,State,Reason,User");
+	}
+
+	print_fields_list = sacctmgr_process_format_list(format_list);
+	FREE_NULL_LIST(format_list);
+
+	itr = list_iterator_create(borrowaway_nodes);
+	itr2 = list_iterator_create(print_fields_list);
+	print_fields_header(print_fields_list);
+
+	field_count = list_count(print_fields_list);
+
+	while((borrow = list_next(itr))) {
+		int curr_inx = 1;
+		char tmp[20], *tmp_char = NULL;
+		uint64_t tmp_uint64 = 0;
+		time_t newend = borrow->period_end;
+
+		while((field = list_next(itr2))) {
+			switch(field->type) {
+			case PRINT_CLUSTER:
+				field->print_routine(field, borrow->cluster,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_DURATION:
+				if (!newend) {
+					newend = time(NULL);
+				}
+				tmp_uint64 = newend - borrow->period_start;
+				field->print_routine(
+					field,
+					&tmp_uint64,
+					(curr_inx == field_count));
+				break;
+			case PRINT_TIMEEND:
+				field->print_routine(field,
+						     &borrow->period_end,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_NODENAME:
+				field->print_routine(field,
+						     borrow->node_name,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_TIMESTART:
+				field->print_routine(field,
+						     &borrow->period_start,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_REASON:
+				field->print_routine(field, borrow->reason,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATERAW:
+				field->print_routine(field, &borrow->state,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATE:
+				tmp_char = node_state_string_compact(
+						borrow->state);
+
+				field->print_routine(field,
+						     tmp_char,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_USER:
+				if (borrow->reason_uid != NO_VAL) {
+					tmp_char = uid_to_string_cached(
+						borrow->reason_uid);
+					snprintf(tmp, sizeof(tmp), "%s(%u)",
+						 tmp_char, borrow->reason_uid);
+				} else
+					memset(tmp, 0, sizeof(tmp));
+				field->print_routine(field, tmp,
+						     (curr_inx == field_count));
+				break;
+			default:
+				field->print_routine(field, NULL,
+						     (curr_inx == field_count));
+					break;
+			}
+			curr_inx++;
+		}
+		list_iterator_reset(itr2);
+		printf("\n");
+	}
+
+	process_nodes = list_create(slurmdb_destroy_borrow_rec);
+
+	while (!rc && list_transfer_max(process_nodes, borrowaway_nodes,
+					BORROWAWAY_NODES_PER_PASS)) {
+		rc = slurmdb_nodes_fix_borrowaway(db_conn, process_nodes);
+		list_flush(process_nodes);
+	}
+
+	if (rc == SLURM_SUCCESS) {
+		if (commit_check(ask_msg))
+			slurmdb_connection_commit(db_conn, 1);
+		else {
+			printf("Changes Discarded\n");
+			slurmdb_connection_commit(db_conn, 0);
+		}
+	} else
+		error("Failed to fix borrowaway node: %s\n",
+		      slurm_strerror(rc));
+end_it:
+	xfree(cluster_str);
+	FREE_NULL_LIST(format_list);
+	FREE_NULL_LIST(borrowaway_nodes);
+	FREE_NULL_LIST(process_nodes);
+	FREE_NULL_LIST(format_list);
+
+	return rc;
+}
+
+extern int sacctmgr_list_borrow(int argc, char **argv)
+{
+	int rc = SLURM_SUCCESS;
+	slurmdb_borrow_cond_t *borrow_cond =
+		xmalloc(sizeof(slurmdb_borrow_cond_t));
+	List borrow_list = NULL;
+	slurmdb_borrow_rec_t *borrow = NULL;
+	int i = 0;
+	list_itr_t *itr = NULL;
+	list_itr_t *itr2 = NULL;
+	int field_count = 0;
+
+	print_field_t *field = NULL;
+
+	List format_list;
+	List print_fields_list; /* types are of print_field_t */
+
+	/* If we don't have any arguments make sure we set up the
+	   time correctly for just the past day.
+	*/
+	if (argc == 0) {
+		struct tm start_tm;
+		borrow_cond->period_start = time(NULL);
+
+		if (!localtime_r(&borrow_cond->period_start, &start_tm)) {
+			fprintf(stderr,
+				" Couldn't get localtime from %ld",
+				(long)borrow_cond->period_start);
+			exit_code = 1;
+			slurmdb_destroy_borrow_cond(borrow_cond);
+			return 0;
+		}
+		start_tm.tm_sec = 0;
+		start_tm.tm_min = 0;
+		start_tm.tm_hour = 0;
+		start_tm.tm_mday--;
+		borrow_cond->period_start = slurm_mktime(&start_tm);
+	}
+
+	format_list = list_create(xfree_ptr);
+	for (i = 0; i < argc; i++) {
+		int command_len = strlen(argv[i]);
+		if (!xstrncasecmp(argv[i], "Where", MAX(command_len, 5))
+		    || !xstrncasecmp(argv[i], "Set", MAX(command_len, 3)))
+			i++;
+		_set_borrow_cond(&i, argc, argv, borrow_cond, format_list);
+	}
+
+	if (exit_code) {
+		slurmdb_destroy_borrow_cond(borrow_cond);
+		FREE_NULL_LIST(format_list);
+		return SLURM_ERROR;
+	}
+
+	if (!list_count(format_list)) {
+		slurm_addto_char_list(format_list,
+						"Cluster,NodeName,Start,"
+						"End,State,Reason,User");
+	}
+
+	print_fields_list = sacctmgr_process_format_list(format_list);
+	FREE_NULL_LIST(format_list);
+
+	if (exit_code) {
+		FREE_NULL_LIST(print_fields_list);
+		return SLURM_ERROR;
+	}
+
+	borrow_list = slurmdb_borrow_get(db_conn, borrow_cond);
+	slurmdb_destroy_borrow_cond(borrow_cond);
+
+	if (!borrow_list) {
+		exit_code=1;
+		fprintf(stderr, " Error with request: %s\n",
+			slurm_strerror(errno));
+		FREE_NULL_LIST(print_fields_list);
+		return SLURM_ERROR;
+	}
+	itr = list_iterator_create(borrow_list);
+	itr2 = list_iterator_create(print_fields_list);
+	print_fields_header(print_fields_list);
+
+	field_count = list_count(print_fields_list);
+
+	while((borrow = list_next(itr))) {
+		int curr_inx = 1;
+		char tmp[20], *tmp_char = NULL;
+		uint64_t tmp_uint64 = 0;
+		time_t newend = borrow->period_end;
+
+		while((field = list_next(itr2))) {
+			switch(field->type) {
+			case PRINT_CLUSTER:
+				field->print_routine(field, borrow->cluster,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_DURATION:
+				if (!newend) {
+					newend = time(NULL);
+				}
+				tmp_uint64 = newend - borrow->period_start;
+				field->print_routine(
+					field,
+					&tmp_uint64,
+					(curr_inx == field_count));
+				break;
+			case PRINT_TIMEEND:
+				field->print_routine(field,
+						     &borrow->period_end,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_NODENAME:
+				field->print_routine(field,
+						     borrow->node_name,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_TIMESTART:
+				field->print_routine(field,
+						     &borrow->period_start,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_REASON:
+				field->print_routine(field, borrow->reason,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATERAW:
+				field->print_routine(field, &borrow->state,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_STATE:
+				tmp_char = node_state_string_compact(
+						borrow->state);
+
+				field->print_routine(field,
+						     tmp_char,
+						     (curr_inx == field_count));
+				break;
+			case PRINT_USER:
+				if (borrow->reason_uid != NO_VAL) {
+					tmp_char = uid_to_string_cached(
+						borrow->reason_uid);
+					snprintf(tmp, sizeof(tmp), "%s(%u)",
+						 tmp_char, borrow->reason_uid);
+				} else
+					memset(tmp, 0, sizeof(tmp));
+				field->print_routine(field, tmp,
+						     (curr_inx == field_count));
+				break;
+			default:
+				field->print_routine(field, NULL,
+						     (curr_inx == field_count));
+					break;
+			}
+			curr_inx++;
+		}
+		list_iterator_reset(itr2);
+		printf("\n");
+	}
+
+	list_iterator_destroy(itr2);
+	list_iterator_destroy(itr);
+	FREE_NULL_LIST(borrow_list);
+	FREE_NULL_LIST(print_fields_list);
+	return rc;
+}
+#endif
