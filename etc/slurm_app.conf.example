@@ -1,0 +1,112 @@
+#
+# Example slurm_app.conf - Application registry for metastack-3.2 App feature
+#
+# This file declares the catalog of applications that users may select via
+# `sbatch --app=NAME[-VERSION]` / `srun --app=NAME[-VERSION]`. It is meant
+# to be Include'd from slurm.conf, e.g.:
+#
+#     # in slurm.conf
+#     Include /etc/slurm/slurm_app.conf
+#
+# Why a dedicated file:
+#   - Non-slurmctld processes (sbatch, srun, squeue, sinfo, slurmd, ...)
+#     skip AppName lines / files entirely via the fast-path in
+#     parse_config.c, so a large catalog has near-zero client overhead.
+#   - Editing the catalog only needs `scontrol reconfigure`, no slurmctld
+#     restart. Combined with `ReconfigFlags=KeepAppInfo` you may also keep
+#     dynamic apps (created via `scontrol create app ...`) across reconfig.
+#
+# Field reference (all keys are case-insensitive):
+#
+#   AppName=<name>          (required)  Catalog key. Must be unique. The
+#                                       combined name "<name>-<version>"
+#                                       is also reserved per version.
+#   Version=<v1>[,<v2>,...] (optional)  Comma-separated version list.
+#                                       Empty / absent = "no version".
+#                                       Whitespace-only tokens are ignored.
+#   Description="<text>"    (optional)  Free-form. Shown by
+#                                       `scontrol show app` and
+#                                       `sbatch --app=list`.
+#   Watchdog=<watchdog>     (optional)  Name of a WatchDogName= entry
+#                                       elsewhere in slurm.conf. The app
+#                                       record will only register if the
+#                                       referenced watchdog is defined.
+#   Default=<YES|NO|...>    (optional)  At most one app may be the default.
+#                                       Setting Default=YES on a new app
+#                                       clears it on the previous default.
+#
+# Operational notes:
+#   - To add/remove versions in-place: `scontrol update app AppName=foo
+#     Version+=2024.1` or `Version-=5.4.4`.
+#   - To inspect: `scontrol show app` / `sbatch --app=list`.
+#   - To filter jobs: `squeue --app-name=vasp --app-source=user`,
+#     `sacct --appname=gromacs --appversion=2024.3`.
+#
+# The catalog below is intentionally heterogeneous and reflects what is
+# typically deployed on a general-purpose HPC cluster. Adjust versions
+# and descriptions to your site. Lines marked "Watchdog=..." assume the
+# corresponding WatchDogName= entry exists; comment them out if not.
+#
+
+# ---------------------------------------------------------------------------
+# Default / generic interactive environment
+# ---------------------------------------------------------------------------
+AppName=generic Description="Generic batch / interactive environment (no specific application stack loaded)" Default=YES
+
+# ---------------------------------------------------------------------------
+# Computational chemistry & materials science
+# ---------------------------------------------------------------------------
+AppName=vasp     Version=6.4.2,6.3.2,5.4.4              Description="VASP - Vienna Ab initio Simulation Package, plane-wave DFT for solids and surfaces" Watchdog=oom_killer
+AppName=qe       Version=7.3.1,7.2,7.1                  Description="Quantum ESPRESSO - integrated suite for electronic-structure calculations and materials modeling at the nanoscale (PWscf, CP, PHonon, ...)"
+AppName=cp2k     Version=2024.1,2023.2,2022.2           Description="CP2K - DFT/AIMD for large-scale molecular and condensed-matter simulations using GPW/GAPW"
+AppName=gaussian Version=g16.C.02,g09.E.01              Description="Gaussian - electronic structure program (HF, DFT, MP2, CCSD(T), ...). Site license required."
+AppName=orca     Version=6.0.0,5.0.4,5.0.3              Description="ORCA - flexible ab initio quantum chemistry package (DLPNO-CCSD(T), CASSCF/NEVPT2, TDDFT)"
+AppName=nwchem   Version=7.2.0,7.0.2                    Description="NWChem - scalable open-source computational chemistry tool for molecules and periodic systems"
+AppName=siesta   Version=4.1.5,4.1-b4                   Description="SIESTA - linear-scaling DFT using numerical atomic orbitals"
+AppName=abinit   Version=9.10.4,9.8.4                   Description="ABINIT - DFT/DFPT for ground state, response functions, GW/BSE"
+
+# ---------------------------------------------------------------------------
+# Molecular dynamics
+# ---------------------------------------------------------------------------
+AppName=gromacs  Version=2024.3,2023.5,2022.6           Description="GROMACS - high-performance MD primarily for biomolecules (proteins, lipids, nucleic acids)" Watchdog=oom_killer
+AppName=lammps   Version=stable_29Aug2024,stable_2Aug2023_update3,stable_23Jun2022_update4 Description="LAMMPS - classical MD with a focus on materials modeling, scalable to billions of atoms"
+AppName=namd     Version=3.0,2.14                       Description="NAMD - parallel MD designed for high-performance simulation of large biomolecular systems"
+AppName=amber    Version=24,22                          Description="AMBER - suite for biomolecular MD (pmemd, sander, MMPBSA.py, cpptraj). Site license required."
+AppName=openmm   Version=8.1.2,8.0.0                    Description="OpenMM - GPU-accelerated MD toolkit, often used as a backend for higher-level workflows"
+
+# ---------------------------------------------------------------------------
+# Computational fluid dynamics & engineering
+# ---------------------------------------------------------------------------
+AppName=openfoam Version=v2406,v2312,11                 Description="OpenFOAM - open-source CFD toolbox (ESI v-series and Foundation versions)"
+AppName=fluent   Version=2024R2,2023R2,2022R1           Description="ANSYS Fluent - general-purpose commercial CFD solver. Site license required."
+AppName=starccm  Version=2406,2310                      Description="Simcenter STAR-CCM+ - multiphysics CFD/CAE platform. Site license required."
+AppName=abaqus   Version=2024,2023,2022                 Description="ABAQUS/Standard & /Explicit - finite element analysis for structures and contact mechanics. Site license required."
+AppName=lsdyna   Version=R14.1,R13.1                    Description="LS-DYNA - explicit FEA for crash, impact and metal forming. Site license required."
+AppName=comsol   Version=6.2,6.1                        Description="COMSOL Multiphysics - multiphysics FEM platform. Site license required."
+
+# ---------------------------------------------------------------------------
+# Earth, climate and weather
+# ---------------------------------------------------------------------------
+AppName=wrf      Version=4.6.0,4.5.2,4.4.2              Description="WRF - Weather Research and Forecasting model, mesoscale numerical weather prediction"
+AppName=cesm     Version=2.2.2,2.1.5                    Description="CESM - Community Earth System Model, fully coupled climate simulations"
+AppName=mom6     Version=2024.05                        Description="MOM6 - Modular Ocean Model used in GFDL/CESM coupled climate runs"
+AppName=cmaq     Version=5.4,5.3.3                      Description="CMAQ - Community Multiscale Air Quality modeling system"
+
+# ---------------------------------------------------------------------------
+# Bioinformatics / life sciences
+# ---------------------------------------------------------------------------
+AppName=blast    Version=2.15.0,2.14.1                  Description="BLAST+ - basic local alignment search tool for sequence similarity search"
+AppName=bwa      Version=0.7.17                         Description="BWA - short-read aligner (BWA-MEM / BWA-MEM2 recommended for >70bp reads)"
+AppName=samtools Version=1.20,1.18,1.17                 Description="SAMtools - reading/writing/manipulating BAM/CRAM, paired with bcftools and htslib"
+AppName=gatk     Version=4.5.0.0,4.4.0.0                Description="GATK4 - Genome Analysis Toolkit for germline & somatic variant discovery"
+AppName=star     Version=2.7.11b,2.7.10a                Description="STAR - splice-aware RNA-seq aligner for short and long reads"
+AppName=alphafold Version=2.3.2,2.3.1                   Description="AlphaFold - deep-learning protein structure prediction (multimer + monomer)"
+
+# ---------------------------------------------------------------------------
+# AI / ML frameworks
+# ---------------------------------------------------------------------------
+AppName=pytorch    Version=2.3.0,2.1.2,1.13.1           Description="PyTorch - deep learning framework with CUDA/cuDNN/NCCL, distributed training via torchrun" Watchdog=gpu_health
+AppName=tensorflow Version=2.15.0,2.13.0,2.10.1         Description="TensorFlow - deep learning framework, includes Keras and TF-XLA"
+AppName=jax        Version=0.4.28,0.4.20                Description="JAX - composable transformations of Python+NumPy programs (jit, grad, vmap, pmap) with XLA backend"
+AppName=megatron   Version=core_v0.7.0                  Description="Megatron-LM - large-scale transformer training (tensor / pipeline / sequence parallelism)"
+AppName=vllm       Version=0.5.4,0.4.3                  Description="vLLM - high-throughput LLM inference engine with PagedAttention"
